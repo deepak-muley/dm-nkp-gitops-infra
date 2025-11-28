@@ -9,5 +9,5 @@ spec:
   prune: true
   sourceRef:
     kind: GitRepository
-    name: dm-gitops-dev-demo
+    name: dm-gitops-dev
     namespace: dept-1-tenant-namespace
