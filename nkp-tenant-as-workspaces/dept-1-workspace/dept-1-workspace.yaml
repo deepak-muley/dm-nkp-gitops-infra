@@ -1,0 +1,8 @@
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: Workspace
+metadata:
+  creationTimestamp: null
+  name: dept-1-workspace
+spec:
+  namespaceName: dept-1-tenant-namespace
+status: {}
