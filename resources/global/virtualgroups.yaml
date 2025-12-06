@@ -1,0 +1,12 @@
+apiVersion: kommander.mesosphere.io/v1beta1
+kind: VirtualGroup
+metadata:
+  annotations:
+    kommander.mesosphere.io/display-name: superheros
+  generation: 1
+  name: superheros
+spec:
+  subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: oidc:mathematicians

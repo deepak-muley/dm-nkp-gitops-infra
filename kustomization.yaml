@@ -1,4 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ./workspaces-kustomization.yaml
+- global-kustomization.yaml
+- workspaces-kustomization.yaml
+- workspace-rbac-kustomization.yaml
+- workspace-applications-kustomization.yaml
+- projects-kustomization.yaml
+- clusters-kustomization.yaml

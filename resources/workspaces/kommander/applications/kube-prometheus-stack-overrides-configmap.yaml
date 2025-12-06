@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-prometheus-stack-config-overrides
+  namespace: kommander
+data:
+  values.yaml: |
+    prometheus:
+      prometheusSpec:
+        resources:
+          limits:
+            cpu: 4000m
+            memory: 40922Mi
+          requests:
+            cpu: 1000m
+            memory: 4000Mi
