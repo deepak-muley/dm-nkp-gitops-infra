@@ -1,0 +1,13 @@
+---
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: Workspace
+metadata:
+  creationTimestamp: null
+  name: dm-dev-workspace
+  annotations:
+    workspace.kommander.mesosphere.io/allow-existing-namespace: "true"
+  labels:
+    caren.nutanix.com/namespace-sync: ""
+spec:
+  namespaceName: dm-dev-workspace
+status: {}

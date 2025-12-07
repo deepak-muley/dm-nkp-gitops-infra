@@ -1,0 +1,16 @@
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: Project
+metadata:
+  annotations:
+    kommander.mesosphere.io/description: "My dev project"
+    kommander.mesosphere.io/display-name: dm-dev-project
+  name: dm-dev-project
+  namespace: dm-dev-workspace
+spec:
+  namespaceName: dm-dev-project
+  placement:
+    clusterSelector:
+      matchLabels:
+        env: test
+  workspaceRef:
+    name: dm-dev-workspace

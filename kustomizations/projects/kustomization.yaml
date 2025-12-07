@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
 - ../../resources/workspaces/batcave/projects
 - ../../resources/workspaces/oscorp/projects
+- ../../resources/workspaces/dm-dev-workspace/projects
