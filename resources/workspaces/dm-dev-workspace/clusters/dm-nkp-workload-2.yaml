@@ -32,7 +32,7 @@ spec:
             ccm:
               credentials:
                 secretRef:
-                  name: dm-nkp-workload-2-pc-credentials
+                  name: dm-nkp-workload-common-pc-credentials
               strategy: HelmAddon
             clusterAutoscaler:
               strategy: HelmAddon
@@ -49,7 +49,7 @@ spec:
                 nutanix:
                   credentials:
                     secretRef:
-                      name: dm-nkp-workload-2-pc-credentials-for-csi
+                      name: dm-nkp-workload-common-pc-credentials-for-csi
                   storageClassConfigs:
                     volume:
                       allowExpansion: true
@@ -68,7 +68,7 @@ spec:
             konnectorAgent:
               credentials:
                 secretRef:
-                  name: dm-nkp-workload-2-pc-credentials-for-konnector-agent
+                  name: dm-nkp-workload-common-pc-credentials-for-konnector-agent
             nfd:
               strategy: HelmAddon
             serviceLoadBalancer:
@@ -107,7 +107,7 @@ spec:
           imageRegistries:
             - credentials:
                 secretRef:
-                  name: dm-nkp-workload-2-image-registry-credentials
+                  name: dm-nkp-workload-common-image-registry-credentials
               url: https://docker.io
           kubeProxy:
             mode: disabled
@@ -120,7 +120,7 @@ spec:
             prismCentralEndpoint:
               credentials:
                 secretRef:
-                  name: dm-nkp-workload-2-pc-credentials
+                  name: dm-nkp-workload-common-pc-credentials
               url: https://pc.dev.nkp.sh:9440
           users:
             - name: konvoy
