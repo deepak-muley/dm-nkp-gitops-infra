@@ -42,39 +42,73 @@ EOF
 
 Here is the structure of the folders and files.
 ```
+.
+├── clusters-kustomization.yaml
+├── global-kustomization.yaml
 ├── kustomization.yaml
 ├── kustomizations
 │   ├── clusters
-│   ├── project-rbac
+│   │   └── kustomization.yaml
+│   ├── global
+│   │   └── kustomization.yaml
 │   ├── projects
 │   │   └── kustomization.yaml
 │   ├── workspace-rbac
+│   │   └── kustomization.yaml
 │   └── workspaces
+│       ├── applications
+│       │   └── kustomization.yaml
 │       └── kustomization.yaml
 ├── projects-kustomization.yaml
+├── README.md
 ├── resources
+│   ├── global
+│   │   ├── kustomization.yaml
+│   │   └── virtualgroups.yaml
 │   └── workspaces
 │       ├── batcave
 │       │   ├── batcave.yaml
 │       │   ├── clusters
+│       │   │   ├── dummy-configmap.yaml
+│       │   │   └── kustomization.yaml
 │       │   ├── projects
 │       │   │   ├── batman
-│       │   │   │   ├── batman.yaml
-│       │   │   │   └── rbac
+│       │   │   │   └── batman.yaml
+│       │   │   ├── kustomization.yaml
 │       │   │   └── robin
-│       │   │       ├── rbac
 │       │   │       └── robin.yaml
 │       │   └── rbac
+│       │       ├── batcave-superheros-rolebinding.yaml
+│       │       └── kustomization.yaml
+│       ├── dm-dev-workspace
+│       │   ├── clusters
+│       │   │   ├── dm-nkp-workload-1-sealed-secrets.yaml
+│       │   │   ├── dm-nkp-workload-1.yaml
+│       │   │   ├── dm-nkp-workload-2-sealed-secrets.yaml
+│       │   │   ├── dm-nkp-workload-2.yaml
+│       │   │   ├── kustomization.yaml
+│       │   │   ├── README.md
+│       │   │   └── sealed-secrets-public-key.pem
+│       │   ├── dm-dev-workspace.yaml
+│       │   └── projects
+│       │       ├── dm-dev-project
+│       │       │   └── dm-dev-project.yaml
+│       │       └── kustomization.yaml
+│       ├── kommander
+│       │   └── applications
+│       │       ├── kube-prometheus-stack-overrides-configmap.yaml
+│       │       ├── kube-prometheus-stack.yaml
+│       │       └── kustomization.yaml
+│       ├── kustomization.yaml
 │       └── oscorp
-│           ├── clusters
 │           ├── oscorp.yaml
-│           ├── projects
-│           │   ├── green-goblin
-│           │   │   ├── green-goblin.yaml
-│           │   │   └── rbac
-│           │   └── spiderman
-│           │       ├── rbac
-│           │       └── spiderman.yaml
-│           └── rbac
+│           └── projects
+│               ├── green-goblin
+│               │   └── green-goblin.yaml
+│               ├── kustomization.yaml
+│               └── spiderman
+│                   └── spiderman.yaml
+├── workspace-applications-kustomization.yaml
+├── workspace-rbac-kustomization.yaml
 └── workspaces-kustomization.yaml
 ```
