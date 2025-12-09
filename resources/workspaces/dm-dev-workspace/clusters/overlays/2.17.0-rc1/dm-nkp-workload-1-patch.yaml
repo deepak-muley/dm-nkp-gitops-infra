@@ -23,15 +23,31 @@ spec:
           controlPlane:
             nutanix:
               machineDetails:
+                bootType: uefi
+                cluster:
+                  name: ncn-dev-sandbox
+                  type: name
                 image:
                   name: nkp-rocky-9.6-release-1.34.1-20251126174702
                   type: name
+                memorySize: 16Gi
+                subnets:
+                  - name: vlan173
+                    type: name
+                systemDiskSize: 80Gi
+                vcpuSockets: 4
+                vcpusPerSocket: 1
           nutanix:
             controlPlaneEndpoint:
               host: 10.23.130.62
               port: 6443
               virtualIP:
                 provider: KubeVIP
+            prismCentralEndpoint:
+              credentials:
+                secretRef:
+                  name: dm-nkp-workload-1-pc-credentials
+              url: https://pc.dev.nkp.sh:9440
     workers:
       machineDeployments:
         - class: default-worker
@@ -42,6 +58,17 @@ spec:
                 value:
                   nutanix:
                     machineDetails:
+                      bootType: uefi
+                      cluster:
+                        name: ncn-dev-sandbox
+                        type: name
                       image:
                         name: nkp-rocky-9.6-release-1.34.1-20251126174702
                         type: name
+                      memorySize: 32Gi
+                      subnets:
+                        - name: vlan173
+                          type: name
+                      systemDiskSize: 80Gi
+                      vcpuSockets: 8
+                      vcpusPerSocket: 1
