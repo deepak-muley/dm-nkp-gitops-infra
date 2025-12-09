@@ -1,0 +1,11 @@
+apiVersion: apps.kommander.d2iq.io/v1alpha3
+kind: AppDeployment
+metadata:
+  name: ndk-2.0.0
+  namespace: dm-dev-project
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: merge
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  configOverrides:
+    name: ndk-2.0.0-config-overrides
