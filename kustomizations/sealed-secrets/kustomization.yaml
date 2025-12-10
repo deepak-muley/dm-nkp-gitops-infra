@@ -3,4 +3,3 @@ kind: Kustomization
 resources:
   - ../../resources/workspaces/dm-dev-workspace/clusters/bases/dm-nkp-workload-1-sealed-secrets.yaml
   - ../../resources/workspaces/dm-dev-workspace/clusters/bases/dm-nkp-workload-2-sealed-secrets.yaml
-
