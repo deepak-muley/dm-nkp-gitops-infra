@@ -1,7 +1,16 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  # Create the namespace first (applied directly, not via Flux Kustomization)
+  # Namespace (must exist before Flux Kustomizations)
   - resources/namespaces/dm-nkp-gitops-namespace.yaml
-  # All Flux Kustomizations are organized in flux-kustomizations/
-  - flux-kustomizations
+  # Flux Kustomization resources (each lives in its respective directory)
+  - kustomizations/global/flux-ks.yaml
+  - kustomizations/workspaces/flux-ks.yaml
+  - kustomizations/workspace-rbac/flux-ks.yaml
+  - kustomizations/workspace-networkpolicies/flux-ks.yaml
+  - kustomizations/workspace-resourcequotas/flux-ks.yaml
+  - kustomizations/workspaces/applications/flux-ks.yaml
+  - kustomizations/clusters/flux-ks.yaml
+  - kustomizations/sealed-secrets/flux-ks.yaml
+  - kustomizations/project-definitions/flux-ks.yaml
+  - kustomizations/project-applications/flux-ks.yaml
