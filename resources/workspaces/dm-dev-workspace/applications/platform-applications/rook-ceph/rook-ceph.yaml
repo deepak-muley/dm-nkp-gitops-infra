@@ -7,13 +7,28 @@ spec:
   appRef:
     kind: ClusterApp
     name: rook-ceph-1.18.6
+  clusterSelector:
+    matchExpressions:
+      - key: kommander.d2iq.io/cluster-name
+        operator: In
+        values:
+          - dm-nkp-workload-1
+          - dm-nkp-workload-2
   clusterConfigOverrides:
     - appVersion: 1.18.6
       clusterSelector:
         matchExpressions:
-          - key: kommander.d2iq.io/workspace-name
+          - key: kommander.d2iq.io/cluster-name
             operator: In
             values:
-              - dm-dev-workspace
+              - dm-nkp-workload-1
+      configMapName: ""
+    - appVersion: 1.18.6
+      clusterSelector:
+        matchExpressions:
+          - key: kommander.d2iq.io/cluster-name
+            operator: In
+            values:
+              - dm-nkp-workload-2
       configMapName: ""
 
