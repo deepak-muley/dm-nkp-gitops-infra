@@ -9,7 +9,7 @@ spec:
     - name: clusterops-project-definitions
   interval: 5s
   retryInterval: 30s
-  path: ./usa-az1/workspaces/dm-dev-workspace/projects/dm-dev-project/applications
+  path: ./region-usa/az1/workspaces/dm-dev-workspace/projects/dm-dev-project/applications
   prune: true
   sourceRef:
     kind: GitRepository

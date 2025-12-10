@@ -1,13 +1,13 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: clusterops-clusters
+  name: clusterops-project-definitions
   namespace: dm-nkp-gitops
 spec:
   dependsOn:
     - name: clusterops-workspaces
   interval: 5s
-  path: ./usa-az1/workspaces/dm-dev-workspace/clusters
+  path: ./region-usa/az1/workspaces/dm-dev-workspace/projects
   prune: true
   sourceRef:
     kind: GitRepository

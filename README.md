@@ -6,11 +6,11 @@ GitOps repository for managing NKP Management Cluster resources across multiple 
 
 | Region | Location | Availability Zones | Status |
 |--------|----------|-------------------|--------|
-| USA    | Region 1 | az1, az2, az3     | ✅ Active (az1) |
-| India  | Region 2 | az1, az2, az3     | 🔜 Planned |
+| region-usa   | USA   | az1, az2, az3 | ✅ Active (az1) |
+| region-india | India | az1, az2, az3 | 🔜 Planned |
 
 This repository currently manages:
-- **usa-az1/** - USA Region, Availability Zone 1
+- **region-usa/az1/** - USA Region, Availability Zone 1
 
 ## What This Manages
 
@@ -41,50 +41,49 @@ kubectl apply -f bootstrap.yaml
 
 ```
 .
-├── bootstrap.yaml                              # Apply once to bootstrap GitOps
-├── kustomization.yaml                          # Root - references all flux-ks.yaml files
+├── bootstrap.yaml                                  # Apply once to bootstrap GitOps
+├── kustomization.yaml                              # Root - references all flux-ks.yaml files
 │
-├── usa-az1/                                    # 🇺🇸 USA Region, AZ1
-│   ├── namespaces/
-│   │   └── dm-nkp-gitops-namespace.yaml
-│   ├── global/
-│   │   ├── flux-ks.yaml
-│   │   ├── kustomization.yaml
-│   │   └── virtualgroups.yaml
-│   └── workspaces/
-│       ├── flux-ks.yaml                        # clusterops-workspaces
-│       ├── kustomization.yaml
-│       └── dm-dev-workspace/
-│           ├── dm-dev-workspace.yaml
-│           ├── applications/
-│           │   ├── flux-ks.yaml                # clusterops-workspace-applications
-│           │   └── ...
-│           ├── clusters/
-│           │   ├── flux-ks.yaml                # clusterops-clusters
-│           │   ├── bases/
-│           │   │   ├── dm-nkp-workload-1.yaml
-│           │   │   └── dm-nkp-workload-2.yaml
-│           │   ├── overlays/
-│           │   └── sealed-secrets/
-│           │       ├── flux-ks.yaml            # clusterops-sealed-secrets
-│           │       └── *.yaml
-│           ├── networkpolicies/
-│           │   └── flux-ks.yaml                # clusterops-workspace-networkpolicies
-│           ├── projects/
-│           │   ├── flux-ks.yaml                # clusterops-project-definitions
-│           │   └── dm-dev-project/
-│           │       └── applications/
-│           │           └── flux-ks.yaml        # clusterops-project-applications
-│           ├── rbac/
-│           │   └── flux-ks.yaml                # clusterops-workspace-rbac
-│           └── resourcequotas/
-│               └── flux-ks.yaml                # clusterops-workspace-resourcequotas
+├── region-usa/                                     # 🇺🇸 USA Region
+│   ├── az1/                                        # Availability Zone 1 (Active)
+│   │   ├── namespaces/
+│   │   │   └── dm-nkp-gitops-namespace.yaml
+│   │   ├── global/
+│   │   │   ├── flux-ks.yaml
+│   │   │   ├── kustomization.yaml
+│   │   │   └── virtualgroups.yaml
+│   │   └── workspaces/
+│   │       ├── flux-ks.yaml                        # clusterops-workspaces
+│   │       ├── kustomization.yaml
+│   │       └── dm-dev-workspace/
+│   │           ├── dm-dev-workspace.yaml
+│   │           ├── applications/
+│   │           │   ├── flux-ks.yaml                # clusterops-workspace-applications
+│   │           │   └── ...
+│   │           ├── clusters/
+│   │           │   ├── flux-ks.yaml                # clusterops-clusters
+│   │           │   ├── bases/
+│   │           │   ├── overlays/
+│   │           │   └── sealed-secrets/
+│   │           │       └── flux-ks.yaml            # clusterops-sealed-secrets
+│   │           ├── networkpolicies/
+│   │           │   └── flux-ks.yaml                # clusterops-workspace-networkpolicies
+│   │           ├── projects/
+│   │           │   ├── flux-ks.yaml                # clusterops-project-definitions
+│   │           │   └── dm-dev-project/
+│   │           │       └── applications/
+│   │           │           └── flux-ks.yaml        # clusterops-project-applications
+│   │           ├── rbac/
+│   │           │   └── flux-ks.yaml                # clusterops-workspace-rbac
+│   │           └── resourcequotas/
+│   │               └── flux-ks.yaml                # clusterops-workspace-resourcequotas
+│   ├── az2/                                        # Availability Zone 2 (Future)
+│   └── az3/                                        # Availability Zone 3 (Future)
 │
-├── usa-az2/                                    # 🇺🇸 USA Region, AZ2 (future)
-├── usa-az3/                                    # 🇺🇸 USA Region, AZ3 (future)
-├── india-az1/                                  # 🇮🇳 India Region, AZ1 (future)
-├── india-az2/                                  # 🇮🇳 India Region, AZ2 (future)
-└── india-az3/                                  # 🇮🇳 India Region, AZ3 (future)
+└── region-india/                                   # 🇮🇳 India Region (Future)
+    ├── az1/
+    ├── az2/
+    └── az3/
 ```
 
 ## Flux Kustomization Dependencies
@@ -107,22 +106,29 @@ Level 2 (Depends on project-definitions):
   └── clusterops-project-applications
 ```
 
-## Adding a New Region/AZ
+## Adding a New Region
 
-1. Copy an existing region-az directory (e.g., `usa-az1/`) to the new name (e.g., `india-az1/`)
-2. Update all `flux-ks.yaml` files to reference the new path
-3. Update workspace names, cluster names, and other region-specific values
+1. Create region directory: `region-<name>/`
+2. Create AZ directories inside: `az1/`, `az2/`, `az3/`
+3. Copy structure from existing AZ (e.g., `region-usa/az1/`)
+4. Update all paths in flux-ks.yaml files
+5. Add references to root `kustomization.yaml`
+
+## Adding a New AZ in Existing Region
+
+1. Copy existing AZ directory (e.g., `region-usa/az1/` → `region-usa/az2/`)
+2. Update all flux-ks.yaml files to reference new path
+3. Update workspace names, cluster names, etc.
 4. Add references to root `kustomization.yaml`
 
 ## Adding a New Workspace
 
-1. Create workspace directory: `<region-az>/workspaces/<workspace-name>/`
-2. Add workspace YAML: `<workspace-name>.yaml`
-3. Add `flux-ks.yaml` for each feature you need
-4. Update `<region-az>/workspaces/kustomization.yaml`
+1. Create workspace directory: `region-<name>/az<n>/workspaces/<workspace-name>/`
+2. Add workspace YAML and flux-ks.yaml files
+3. Update `region-<name>/az<n>/workspaces/kustomization.yaml`
 
 ## Adding a New Cluster
 
-1. Add cluster YAML under `<region-az>/workspaces/<workspace>/clusters/bases/`
-2. Add sealed secrets under `<region-az>/workspaces/<workspace>/clusters/sealed-secrets/`
+1. Add cluster YAML under `.../clusters/bases/`
+2. Add sealed secrets under `.../clusters/sealed-secrets/`
 3. Optionally add overlays for version-specific patches
