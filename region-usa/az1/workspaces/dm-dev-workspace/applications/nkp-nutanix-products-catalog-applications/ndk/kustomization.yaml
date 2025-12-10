@@ -3,4 +3,5 @@ kind: Kustomization
 resources:
 - ndk-2.0.0.yaml
 - ndk-2.0.0-config-overrides.yaml
+- ndk-image-pull-sealed-secret.yaml
 
