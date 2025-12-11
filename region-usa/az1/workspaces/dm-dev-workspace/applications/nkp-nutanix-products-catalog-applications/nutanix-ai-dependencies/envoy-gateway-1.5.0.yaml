@@ -1,0 +1,21 @@
+# Envoy Gateway - API Gateway using Envoy Proxy
+# Dependency for Nutanix AI 2.5.0
+apiVersion: apps.kommander.d2iq.io/v1alpha3
+kind: AppDeployment
+metadata:
+  name: envoy-gateway-1.5.0
+  namespace: dm-dev-workspace
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: merge
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  appRef:
+    kind: App
+    name: envoy-gateway-1.5.0
+  clusterSelector:
+    matchExpressions:
+      - key: kommander.d2iq.io/cluster-name
+        operator: In
+        values:
+          - dm-nkp-workload-1
+          - dm-nkp-workload-2
