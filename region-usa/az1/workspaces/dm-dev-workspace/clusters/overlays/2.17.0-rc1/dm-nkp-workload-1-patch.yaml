@@ -7,9 +7,8 @@ spec:
   topology:
     class: nkp-nutanix-v2.17.0-rc.1
     version: v1.34.1
-    # Uncomment and modify the section below to override base values
-    # controlPlane:
-    #   replicas: 3
+    controlPlane:
+      replicas: 1
     variables:
       - name: clusterConfig
         value:
@@ -52,6 +51,7 @@ spec:
       machineDeployments:
         - class: default-worker
           name: md-0
+          replicas: 3
           variables:
             overrides:
               - name: workerConfig
