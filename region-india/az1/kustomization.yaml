@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# India Region - Availability Zone 1
+# This kustomization manages all resources for az1
+#
+# To set up this AZ:
+# 1. Copy the structure from region-usa/az1
+# 2. Update namespace, workspace, and cluster names
+# 3. Update sealed secrets with new certificates
+# 4. Update cluster configurations (IPs, Prism Central, etc.)
+
+resources: []
+  # Uncomment and add resources when az1 is ready
+  # - namespaces/dm-nkp-gitops-namespace.yaml
+  # - global/flux-ks.yaml
+  # - workspaces/flux-ks.yaml

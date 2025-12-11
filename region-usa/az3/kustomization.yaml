@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# USA Region - Availability Zone 3
+# This kustomization manages all resources for az3
+#
+# To set up this AZ:
+# 1. Copy the structure from az1
+# 2. Update namespace, workspace, and cluster names
+# 3. Update sealed secrets with new certificates
+# 4. Update cluster configurations (IPs, etc.)
+
+resources: []
+  # Uncomment and add resources when az3 is ready
+  # - namespaces/dm-nkp-gitops-namespace.yaml
+  # - global/flux-ks.yaml
+  # - workspaces/flux-ks.yaml

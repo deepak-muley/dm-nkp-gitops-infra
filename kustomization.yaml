@@ -1,12 +1,36 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
+# Root Kustomization - Multi-Region Multi-AZ
+#
+# NOTE: For production deployments, use region+az specific bootstrap files:
+#   - region-usa/az1/bootstrap.yaml
+#   - region-usa/az2/bootstrap.yaml
+#   - etc.
+#
+# This root kustomization is primarily for:
+#   1. Legacy/demo deployments
+#   2. CI/CD validation of all resources
+#
+# Each region/az has its own kustomization.yaml that should be used
+# when bootstrapping a specific management cluster.
+
 resources:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # USA Region - AZ1 (Active)
+  # ═══════════════════════════════════════════════════════════════════════════
+
   # Namespace (must exist before Flux Kustomizations)
   - region-usa/az1/namespaces/dm-nkp-gitops-namespace.yaml
-  # Flux Kustomization resources (each lives alongside its resources)
+
+  # Global resources
   - region-usa/az1/global/flux-ks.yaml
   - region-usa/az1/global/sealed-secrets-controller/flux-ks.yaml
+
+  # Workspaces
   - region-usa/az1/workspaces/flux-ks.yaml
+
+  # dm-dev-workspace resources
   - region-usa/az1/workspaces/dm-dev-workspace/applications/flux-ks.yaml
   - region-usa/az1/workspaces/dm-dev-workspace/clusters/flux-ks.yaml
   - region-usa/az1/workspaces/dm-dev-workspace/clusters/sealed-secrets/flux-ks.yaml
@@ -15,3 +39,18 @@ resources:
   - region-usa/az1/workspaces/dm-dev-workspace/resourcequotas/flux-ks.yaml
   - region-usa/az1/workspaces/dm-dev-workspace/projects/flux-ks.yaml
   - region-usa/az1/workspaces/dm-dev-workspace/projects/dm-dev-project/applications/flux-ks.yaml
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # USA Region - AZ2 (Planned)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Add resources here when az2 is configured
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # USA Region - AZ3 (Planned)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Add resources here when az3 is configured
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # India Region - AZ1, AZ2, AZ3 (Planned)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Add resources here when India region is configured

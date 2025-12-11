@@ -1,0 +1,40 @@
+# Bootstrap manifest for NKP GitOps - India Region AZ2
+# Apply this to bootstrap GitOps for region-india/az2:
+#
+#   kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-gitops-dev/main/region-india/az2/bootstrap.yaml
+#
+# Or locally:
+#   kubectl apply -f region-india/az2/bootstrap.yaml
+#
+# Configuration:
+#   Region: India
+#   Availability Zone: az2
+#   Management Cluster: <your-mgmt-cluster>
+#
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: gitops-india-az2
+  namespace: kommander
+spec:
+  interval: 5m
+  ref:
+    branch: main
+  timeout: 60s
+  url: https://github.com/deepak-muley/dm-gitops-dev.git
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: clusterops-india-az2
+  namespace: kommander
+spec:
+  interval: 5m
+  path: ./region-india/az2
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: gitops-india-az2
+    namespace: kommander
+  timeout: 3m

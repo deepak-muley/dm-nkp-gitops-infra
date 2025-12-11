@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# USA Region - Availability Zone 1
+# This kustomization manages all resources for az1
+
+resources:
+  # Namespace (must exist before Flux Kustomizations)
+  - namespaces/dm-nkp-gitops-namespace.yaml
+
+  # Global resources
+  - global/flux-ks.yaml
+  - global/sealed-secrets-controller/flux-ks.yaml
+
+  # Workspaces
+  - workspaces/flux-ks.yaml
+
+  # dm-dev-workspace resources
+  - workspaces/dm-dev-workspace/applications/flux-ks.yaml
+  - workspaces/dm-dev-workspace/clusters/flux-ks.yaml
+  - workspaces/dm-dev-workspace/clusters/sealed-secrets/flux-ks.yaml
+  - workspaces/dm-dev-workspace/rbac/flux-ks.yaml
+  - workspaces/dm-dev-workspace/networkpolicies/flux-ks.yaml
+  - workspaces/dm-dev-workspace/resourcequotas/flux-ks.yaml
+  - workspaces/dm-dev-workspace/projects/flux-ks.yaml
+  - workspaces/dm-dev-workspace/projects/dm-dev-project/applications/flux-ks.yaml
