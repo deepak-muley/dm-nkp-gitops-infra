@@ -40,7 +40,7 @@ metadata:
   name: gitops-demo
   namespace: kommander
 spec:
-  interval: 5m
+  interval: 1h
   ref:
     branch: main
   timeout: 60s
@@ -52,7 +52,7 @@ metadata:
   name: clusterops-demo
   namespace: kommander
 spec:
-  interval: 5m
+  interval: 1h
   path: ./
   prune: true
   sourceRef:

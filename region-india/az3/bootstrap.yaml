@@ -18,7 +18,7 @@ metadata:
   name: gitops-india-az3
   namespace: kommander
 spec:
-  interval: 5m
+  interval: 1h
   ref:
     branch: main
   timeout: 60s
@@ -30,7 +30,7 @@ metadata:
   name: clusterops-india-az3
   namespace: kommander
 spec:
-  interval: 5m
+  interval: 1h
   path: ./region-india/az3
   prune: true
   sourceRef:
