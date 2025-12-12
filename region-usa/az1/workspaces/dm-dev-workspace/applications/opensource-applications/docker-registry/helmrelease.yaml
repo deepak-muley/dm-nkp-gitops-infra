@@ -27,7 +27,8 @@ spec:
   values:
     # Use the official registry image from Docker Hub
     image:
-      repository: registry
+      registry: docker.io
+      repository: library/registry
       tag: "2.8.3"
     # Service configuration
     service:

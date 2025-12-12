@@ -5,6 +5,5 @@ metadata:
   name: docker-registry
   namespace: docker-registry
 spec:
-  type: oci
   interval: 1h0m0s
-  url: oci://ghcr.io/twuni/helm-charts
+  url: https://twuni.github.io/docker-registry.helm
