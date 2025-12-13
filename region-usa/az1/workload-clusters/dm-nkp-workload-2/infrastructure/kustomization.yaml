@@ -4,7 +4,8 @@ kind: Kustomization
 # Infrastructure components for dm-nkp-workload-2
 # These are deployed INSIDE the workload cluster
 
-resources: []
+resources:
+  - sealed-secrets/
 # Add infrastructure components as needed, e.g.:
 #   - cert-manager/
 #   - ingress-nginx/
