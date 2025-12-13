@@ -4,8 +4,8 @@ kind: Kustomization
 # Root Kustomization - Multi-Region Multi-AZ
 #
 # NOTE: For production deployments, use region+az specific bootstrap files:
-#   - region-usa/az1/bootstrap.yaml
-#   - region-usa/az2/bootstrap.yaml
+#   - region-usa/az1/management-cluster/bootstrap.yaml
+#   - region-usa/az2/management-cluster/bootstrap.yaml
 #   - etc.
 #
 # This root kustomization is primarily for:
@@ -21,24 +21,24 @@ resources:
   # ═══════════════════════════════════════════════════════════════════════════
 
   # Namespace (must exist before Flux Kustomizations)
-  - region-usa/az1/namespaces/dm-nkp-gitops-namespace.yaml
+  - region-usa/az1/management-cluster/namespaces/dm-nkp-gitops-namespace.yaml
 
   # Global resources
-  - region-usa/az1/global/flux-ks.yaml
-  - region-usa/az1/global/sealed-secrets-controller/flux-ks.yaml
+  - region-usa/az1/management-cluster/global/flux-ks.yaml
+  - region-usa/az1/management-cluster/global/sealed-secrets-controller/flux-ks.yaml
 
   # Workspaces
-  - region-usa/az1/workspaces/flux-ks.yaml
+  - region-usa/az1/management-cluster/workspaces/flux-ks.yaml
 
   # dm-dev-workspace resources
-  - region-usa/az1/workspaces/dm-dev-workspace/application-catalogs/flux-ks.yaml
-  - region-usa/az1/workspaces/dm-dev-workspace/applications/flux-ks.yaml
-  - region-usa/az1/workspaces/dm-dev-workspace/clusters/flux-ks.yaml
-  - region-usa/az1/workspaces/dm-dev-workspace/clusters/sealed-secrets/flux-ks.yaml
-  - region-usa/az1/workspaces/dm-dev-workspace/rbac/flux-ks.yaml
-  - region-usa/az1/workspaces/dm-dev-workspace/resourcequotas/flux-ks.yaml
-  - region-usa/az1/workspaces/dm-dev-workspace/projects/flux-ks.yaml
-  - region-usa/az1/workspaces/dm-dev-workspace/projects/dm-dev-project/applications/flux-ks.yaml
+  - region-usa/az1/management-cluster/workspaces/dm-dev-workspace/application-catalogs/flux-ks.yaml
+  - region-usa/az1/management-cluster/workspaces/dm-dev-workspace/applications/flux-ks.yaml
+  - region-usa/az1/management-cluster/workspaces/dm-dev-workspace/clusters/flux-ks.yaml
+  - region-usa/az1/management-cluster/workspaces/dm-dev-workspace/clusters/sealed-secrets/flux-ks.yaml
+  - region-usa/az1/management-cluster/workspaces/dm-dev-workspace/rbac/flux-ks.yaml
+  - region-usa/az1/management-cluster/workspaces/dm-dev-workspace/resourcequotas/flux-ks.yaml
+  - region-usa/az1/management-cluster/workspaces/dm-dev-workspace/projects/flux-ks.yaml
+  - region-usa/az1/management-cluster/workspaces/dm-dev-workspace/projects/dm-dev-project/applications/flux-ks.yaml
 
   # ═══════════════════════════════════════════════════════════════════════════
   # USA Region - AZ2 (Planned)
