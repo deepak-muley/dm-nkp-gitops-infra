@@ -31,6 +31,7 @@ resources:
   - region-usa/az1/workspaces/flux-ks.yaml
 
   # dm-dev-workspace resources
+  - region-usa/az1/workspaces/dm-dev-workspace/application-catalogs/flux-ks.yaml
   - region-usa/az1/workspaces/dm-dev-workspace/applications/flux-ks.yaml
   - region-usa/az1/workspaces/dm-dev-workspace/clusters/flux-ks.yaml
   - region-usa/az1/workspaces/dm-dev-workspace/clusters/sealed-secrets/flux-ks.yaml
