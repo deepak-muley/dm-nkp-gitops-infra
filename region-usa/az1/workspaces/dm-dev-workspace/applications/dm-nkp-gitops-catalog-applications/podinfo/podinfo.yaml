@@ -9,7 +9,7 @@ metadata:
 spec:
   appRef:
     kind: App
-    name: podinfo
+    name: podinfo-6.9.4
   clusterSelector:
     matchExpressions:
       - key: kommander.d2iq.io/cluster-name
