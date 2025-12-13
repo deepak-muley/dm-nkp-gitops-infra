@@ -1,0 +1,40 @@
+# Bootstrap manifest for NKP GitOps - USA Region AZ1 Management Cluster
+# Apply this to bootstrap GitOps for region-usa/az1 management cluster:
+#
+#   kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/management-cluster/bootstrap.yaml
+#
+# Or locally:
+#   kubectl apply -f region-usa/az1/management-cluster/bootstrap.yaml
+#
+# Configuration:
+#   Region: USA
+#   Availability Zone: az1
+#   Management Cluster: dm-nkp-mgmt-1
+#
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: gitops-usa-az1
+  namespace: kommander
+spec:
+  interval: 1h
+  ref:
+    branch: main
+  timeout: 60s
+  url: https://github.com/deepak-muley/dm-nkp-gitops-infra.git
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: clusterops-usa-az1
+  namespace: kommander
+spec:
+  interval: 1h
+  path: ./region-usa/az1/management-cluster
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: gitops-usa-az1
+    namespace: kommander
+  timeout: 3m

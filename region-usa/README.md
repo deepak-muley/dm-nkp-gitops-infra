@@ -2,26 +2,58 @@
 
 GitOps configuration for USA region availability zones.
 
+## Directory Structure
+
+```
+region-usa/
+└── az1/
+    ├── management-cluster/     # Resources for NKP management cluster
+    │   ├── bootstrap.yaml      # Bootstrap manifest
+    │   ├── global/
+    │   ├── namespaces/
+    │   └── workspaces/
+    │       └── dm-dev-workspace/
+    │           ├── clusters/   # CAPI cluster definitions
+    │           ├── applications/
+    │           └── projects/
+    └── workload-clusters/      # Resources deployed INSIDE workload clusters
+        ├── dm-nkp-workload-1/
+        └── dm-nkp-workload-2/
+```
+
 ## Availability Zones
 
-| AZ | Bootstrap | Status | Management Cluster |
-|----|-----------|--------|-------------------|
-| az1 | `az1/bootstrap.yaml` | ✅ Active | dm-nkp-mgmt-1 |
-| az2 | `az2/bootstrap.yaml` | 🔜 Planned | - |
-| az3 | `az3/bootstrap.yaml` | 🔜 Planned | - |
+| AZ | Management Cluster Bootstrap | Status | Management Cluster |
+|----|------------------------------|--------|-------------------|
+| az1 | `az1/management-cluster/bootstrap.yaml` | ✅ Active | dm-nkp-mgmt-1 |
+| az2 | `az2/management-cluster/bootstrap.yaml` | 🔜 Planned | - |
+| az3 | `az3/management-cluster/bootstrap.yaml` | 🔜 Planned | - |
 
-## Bootstrap
+## Bootstrap Commands
+
+### Management Cluster (AZ1)
 
 ```bash
-# Bootstrap AZ1
-kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/bootstrap.yaml
-
-# Bootstrap AZ2 (when ready)
-kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az2/bootstrap.yaml
-
-# Bootstrap AZ3 (when ready)
-kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az3/bootstrap.yaml
+# Bootstrap management cluster GitOps
+kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/management-cluster/bootstrap.yaml
 ```
+
+### Workload Clusters
+
+After workload clusters are created by CAPI, bootstrap GitOps inside them:
+
+```bash
+# Set kubeconfig to target workload cluster
+export KUBECONFIG=~/.kube/dm-nkp-workload-1.kubeconfig
+
+# Install Flux components (uses dm-nkp-gitops-workload namespace)
+flux install --namespace=dm-nkp-gitops-workload
+
+# Apply the bootstrap manifests
+kubectl apply -k region-usa/az1/workload-clusters/dm-nkp-workload-1/flux-system/
+```
+
+See [workload-clusters/README.md](az1/workload-clusters/README.md) for detailed instructions.
 
 ## AZ1 Resources
 
@@ -32,7 +64,7 @@ Currently managing:
 
 ## Adding a New AZ
 
-1. Update the `az<n>/kustomization.yaml` with resources
-2. Copy structure from `az1/` as a template
+1. Copy structure from `az1/` as a template
+2. Update `management-cluster/kustomization.yaml` with resources
 3. Update all configurations (IPs, names, secrets)
 4. Apply the bootstrap file to the new management cluster

@@ -1,37 +1,44 @@
 # Bootstrap manifest for NKP GitOps - Multi-Region Multi-AZ
 #
-# This is a reference bootstrap file. For production use, apply the
-# region+az specific bootstrap file for your management cluster.
-#
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │  REGION-SPECIFIC BOOTSTRAP FILES                                            │
+# │  MANAGEMENT CLUSTER BOOTSTRAP                                              │
 # ├─────────────────────────────────────────────────────────────────────────────┤
 # │  USA Region:                                                                │
-# │    region-usa/az1/bootstrap.yaml  ← Active (dm-nkp-mgmt-1)                  │
-# │    region-usa/az2/bootstrap.yaml  ← Planned                                 │
-# │    region-usa/az3/bootstrap.yaml  ← Planned                                 │
+# │    region-usa/az1/management-cluster/bootstrap.yaml  ← Active              │
+# │    region-usa/az2/management-cluster/bootstrap.yaml  ← Planned             │
+# │    region-usa/az3/management-cluster/bootstrap.yaml  ← Planned             │
 # │                                                                             │
 # │  India Region:                                                              │
-# │    region-india/az1/bootstrap.yaml  ← Planned                               │
-# │    region-india/az2/bootstrap.yaml  ← Planned                               │
-# │    region-india/az3/bootstrap.yaml  ← Planned                               │
+# │    region-india/az1/management-cluster/bootstrap.yaml  ← Planned           │
+# │    region-india/az2/management-cluster/bootstrap.yaml  ← Planned           │
+# │    region-india/az3/management-cluster/bootstrap.yaml  ← Planned           │
+# └─────────────────────────────────────────────────────────────────────────────┘
+#
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │  WORKLOAD CLUSTER BOOTSTRAP                                                 │
+# ├─────────────────────────────────────────────────────────────────────────────┤
+# │  USA Region AZ1:                                                            │
+# │    region-usa/az1/workload-clusters/dm-nkp-workload-1/bootstrap.yaml        │
+# │    region-usa/az1/workload-clusters/dm-nkp-workload-2/bootstrap.yaml        │
 # └─────────────────────────────────────────────────────────────────────────────┘
 #
 # Usage Examples:
 #
-#   # Bootstrap USA AZ1 (currently active):
-#   kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/bootstrap.yaml
+#   # Bootstrap Management Cluster (USA AZ1):
+#   kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/management-cluster/bootstrap.yaml
 #
-#   # Bootstrap India AZ1 (when ready):
-#   kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-india/az1/bootstrap.yaml
+#   # Bootstrap Workload Cluster (dm-nkp-workload-1):
+#   # Note: NKP workload clusters have Flux in kommander-flux watching all namespaces
+#   export KUBECONFIG=~/.kube/dm-nkp-workload-1.kubeconfig
+#   kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/workload-clusters/dm-nkp-workload-1/bootstrap.yaml
 #
-# Each bootstrap file creates:
-#   1. GitRepository - Points to this repo
-#   2. Kustomization - Points to the region/az specific path
+#   # Bootstrap Workload Cluster (dm-nkp-workload-2):
+#   export KUBECONFIG=~/.kube/dm-nkp-workload-2.kubeconfig
+#   kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/workload-clusters/dm-nkp-workload-2/bootstrap.yaml
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# LEGACY: The manifests below bootstrap ALL regions/AZs from a single cluster.
-# This is NOT recommended for production. Use region+az specific bootstrap files.
+# LEGACY: The manifests below bootstrap from root path.
+# This is NOT recommended for production. Use specific bootstrap files above.
 # ─────────────────────────────────────────────────────────────────────────────
 ---
 apiVersion: source.toolkit.fluxcd.io/v1

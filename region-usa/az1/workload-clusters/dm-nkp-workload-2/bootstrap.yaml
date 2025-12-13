@@ -1,0 +1,70 @@
+# Bootstrap manifest for dm-nkp-workload-2 Workload Cluster
+#
+# This bootstraps GitOps INSIDE the workload cluster.
+#
+# Note: NKP workload clusters already have Flux controllers in kommander-flux
+# namespace watching all namespaces. No need to install Flux separately.
+#
+# Prerequisites:
+#   1. Workload cluster is running and accessible
+#   2. kubectl is configured to access the workload cluster
+#
+# Usage:
+#   export KUBECONFIG=~/.kube/dm-nkp-workload-2.kubeconfig
+#   kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/workload-clusters/dm-nkp-workload-2/bootstrap.yaml
+#
+# Or locally:
+#   kubectl apply -f region-usa/az1/workload-clusters/dm-nkp-workload-2/bootstrap.yaml
+#
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dm-nkp-gitops-workload
+  labels:
+    app.kubernetes.io/part-of: dm-nkp-gitops
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: dm-nkp-gitops-infra
+  namespace: dm-nkp-gitops-workload
+spec:
+  interval: 5m
+  ref:
+    branch: main
+  timeout: 60s
+  url: https://github.com/deepak-muley/dm-nkp-gitops-infra.git
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure
+  namespace: dm-nkp-gitops-workload
+spec:
+  interval: 10m
+  path: ./region-usa/az1/workload-clusters/dm-nkp-workload-2/infrastructure
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: dm-nkp-gitops-infra
+    namespace: dm-nkp-gitops-workload
+  timeout: 5m
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps
+  namespace: dm-nkp-gitops-workload
+spec:
+  dependsOn:
+    - name: infrastructure
+  interval: 10m
+  path: ./region-usa/az1/workload-clusters/dm-nkp-workload-2/apps
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: dm-nkp-gitops-infra
+    namespace: dm-nkp-gitops-workload
+  timeout: 5m

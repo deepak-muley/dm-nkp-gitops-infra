@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Infrastructure components for dm-nkp-workload-1
+# These are deployed INSIDE the workload cluster
+
+resources: []
+# Add infrastructure components as needed, e.g.:
+#   - cert-manager/
+#   - ingress-nginx/
+#   - external-dns/
+#   - external-secrets/
+

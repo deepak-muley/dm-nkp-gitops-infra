@@ -4,128 +4,123 @@ GitOps repository for managing NKP (Nutanix Kubernetes Platform) resources acros
 
 ## Quick Start
 
-### Bootstrap a Region/AZ
+### Bootstrap Management Cluster
 
 Each region and availability zone has its own bootstrap file. Apply the one matching your management cluster:
 
 ```bash
 # USA Region - AZ1 (Currently Active)
-kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/bootstrap.yaml
+kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/management-cluster/bootstrap.yaml
 
 # USA Region - AZ2
-kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az2/bootstrap.yaml
+kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az2/management-cluster/bootstrap.yaml
 
 # USA Region - AZ3
-kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az3/bootstrap.yaml
+kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az3/management-cluster/bootstrap.yaml
 
 # India Region - AZ1
-kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-india/az1/bootstrap.yaml
+kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-india/az1/management-cluster/bootstrap.yaml
+```
 
-# India Region - AZ2
-kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-india/az2/bootstrap.yaml
+### Bootstrap Workload Clusters
 
-# India Region - AZ3
-kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-india/az3/bootstrap.yaml
+After workload clusters are created by CAPI, bootstrap GitOps inside them.
+NKP workload clusters already have Flux controllers in `kommander-flux` namespace
+watching all namespaces, so no need to install Flux separately:
+
+```bash
+# dm-nkp-workload-1
+export KUBECONFIG=~/.kube/dm-nkp-workload-1.kubeconfig
+kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/workload-clusters/dm-nkp-workload-1/bootstrap.yaml
+
+# dm-nkp-workload-2
+export KUBECONFIG=~/.kube/dm-nkp-workload-2.kubeconfig
+kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-infra/main/region-usa/az1/workload-clusters/dm-nkp-workload-2/bootstrap.yaml
 ```
 
 ## Regions & Availability Zones
 
-| Region | Location | AZ | Bootstrap File | Status |
-|--------|----------|-----|----------------|--------|
-| region-usa | USA | az1 | `region-usa/az1/bootstrap.yaml` | ✅ Active |
-| region-usa | USA | az2 | `region-usa/az2/bootstrap.yaml` | 🔜 Planned |
-| region-usa | USA | az3 | `region-usa/az3/bootstrap.yaml` | 🔜 Planned |
-| region-india | India | az1 | `region-india/az1/bootstrap.yaml` | 🔜 Planned |
-| region-india | India | az2 | `region-india/az2/bootstrap.yaml` | 🔜 Planned |
-| region-india | India | az3 | `region-india/az3/bootstrap.yaml` | 🔜 Planned |
+| Region | Location | AZ | Management Cluster Bootstrap | Status |
+|--------|----------|-----|------------------------------|--------|
+| region-usa | USA | az1 | `region-usa/az1/management-cluster/bootstrap.yaml` | ✅ Active |
+| region-usa | USA | az2 | `region-usa/az2/management-cluster/bootstrap.yaml` | 🔜 Planned |
+| region-usa | USA | az3 | `region-usa/az3/management-cluster/bootstrap.yaml` | 🔜 Planned |
+| region-india | India | az1 | `region-india/az1/management-cluster/bootstrap.yaml` | 🔜 Planned |
+| region-india | India | az2 | `region-india/az2/management-cluster/bootstrap.yaml` | 🔜 Planned |
+| region-india | India | az3 | `region-india/az3/management-cluster/bootstrap.yaml` | 🔜 Planned |
 
 ## What This Manages
 
-Each region/az can manage:
-
+### Management Cluster Resources
 - **Namespaces** - GitOps namespace for Flux Kustomizations
 - **Global Resources** - VirtualGroups, Sealed Secrets Controller
 - **Workspaces** - Workspace definitions and configurations
-- **Clusters** - Workload cluster definitions with sealed secrets
+- **CAPI Clusters** - Workload cluster definitions with sealed secrets
 - **RBAC** - Role bindings for workspace access
 - **Network Policies** - Cross-workspace traffic controls
 - **Resource Quotas** - Workspace resource limits
 - **Projects** - Project definitions within workspaces
-- **Applications** - Platform and project-level applications
+- **Applications** - Platform and project-level applications (deployed via Kommander)
+
+### Workload Cluster Resources
+- **Infrastructure** - Core infrastructure components (cert-manager, ingress, etc.)
+- **Apps** - Applications deployed directly inside workload clusters
 
 ## Repository Structure
 
 ```
 .
-├── bootstrap.yaml                              # Reference bootstrap (use region/az specific)
-├── kustomization.yaml                          # Root kustomization (for legacy/CI)
 ├── README.md
 │
-├── region-usa/                                 # 🇺🇸 USA Region
-│   ├── az1/                                    # Availability Zone 1 ✅ Active
-│   │   ├── bootstrap.yaml                      # ← Bootstrap for this AZ
-│   │   ├── kustomization.yaml                  # ← Resources for this AZ
-│   │   ├── namespaces/
-│   │   │   └── dm-nkp-gitops-namespace.yaml
-│   │   ├── global/
-│   │   │   ├── flux-ks.yaml
-│   │   │   ├── kustomization.yaml
-│   │   │   ├── virtualgroups.yaml
-│   │   │   └── sealed-secrets-controller/
-│   │   │       ├── flux-ks.yaml
-│   │   │       ├── helmrelease.yaml
-│   │   │       ├── helmrepository.yaml
-│   │   │       └── namespace.yaml
-│   │   └── workspaces/
-│   │       ├── flux-ks.yaml
-│   │       ├── kustomization.yaml
-│   │       └── dm-dev-workspace/
-│   │           ├── dm-dev-workspace.yaml
-│   │           ├── applications/
-│   │           │   ├── flux-ks.yaml
-│   │           │   ├── platform-applications/
-│   │           │   └── nkp-nutanix-products-catalog-applications/
-│   │           ├── clusters/
-│   │           │   ├── flux-ks.yaml
-│   │           │   ├── bases/
-│   │           │   ├── overlays/
-│   │           │   └── sealed-secrets/
-│   │           ├── networkpolicies/
-│   │           │   └── flux-ks.yaml
-│   │           ├── projects/
-│   │           │   ├── flux-ks.yaml
-│   │           │   └── dm-dev-project/
-│   │           ├── rbac/
-│   │           │   └── flux-ks.yaml
-│   │           └── resourcequotas/
-│   │               └── flux-ks.yaml
-│   ├── az2/                                    # Availability Zone 2 🔜 Planned
-│   │   ├── bootstrap.yaml
-│   │   ├── kustomization.yaml
-│   │   └── README.md
-│   └── az3/                                    # Availability Zone 3 🔜 Planned
-│       ├── bootstrap.yaml
-│       ├── kustomization.yaml
-│       └── README.md
+├── region-usa/                                     # 🇺🇸 USA Region
+│   └── az1/                                        # Availability Zone 1 ✅ Active
+│       ├── management-cluster/                     # Resources for NKP management cluster
+│       │   ├── bootstrap.yaml                      # ← Bootstrap for management cluster
+│       │   ├── kustomization.yaml
+│       │   ├── namespaces/
+│       │   │   └── dm-nkp-gitops-namespace.yaml
+│       │   ├── global/
+│       │   │   ├── flux-ks.yaml
+│       │   │   ├── virtualgroups.yaml
+│       │   │   └── sealed-secrets-controller/
+│       │   └── workspaces/
+│       │       ├── flux-ks.yaml
+│       │       └── dm-dev-workspace/
+│       │           ├── dm-dev-workspace.yaml
+│       │           ├── application-catalogs/       # Custom app catalogs
+│       │           ├── applications/               # Workspace applications
+│       │           │   ├── platform-applications/
+│       │           │   └── nkp-nutanix-products-catalog-applications/
+│       │           ├── clusters/                   # CAPI workload cluster definitions
+│       │           │   ├── bases/
+│       │           │   ├── overlays/
+│       │           │   └── sealed-secrets/
+│       │           ├── projects/
+│       │           │   └── dm-dev-project/
+│       │           ├── rbac/
+│       │           └── resourcequotas/
+│       │
+│       └── workload-clusters/                      # Resources deployed INSIDE workload clusters
+│           ├── _base/                              # Shared base configurations
+│           │   └── infrastructure/
+│           ├── dm-nkp-workload-1/
+│           │   ├── bootstrap.yaml                  # ← Single command bootstrap
+│           │   ├── infrastructure/                 # Infra components
+│           │   └── apps/                           # Applications
+│           └── dm-nkp-workload-2/
+│               ├── bootstrap.yaml                  # ← Single command bootstrap
+│               ├── infrastructure/
+│               └── apps/
 │
-└── region-india/                               # 🇮🇳 India Region
-    ├── az1/                                    # Availability Zone 1 🔜 Planned
-    │   ├── bootstrap.yaml
-    │   ├── kustomization.yaml
-    │   └── README.md
-    ├── az2/                                    # Availability Zone 2 🔜 Planned
-    │   ├── bootstrap.yaml
-    │   ├── kustomization.yaml
-    │   └── README.md
-    └── az3/                                    # Availability Zone 3 🔜 Planned
-        ├── bootstrap.yaml
-        ├── kustomization.yaml
-        └── README.md
+└── region-india/                                   # 🇮🇳 India Region
+    └── az1/, az2/, az3/                            # 🔜 Planned
 ```
 
 ## Bootstrap Architecture
 
-Each bootstrap file creates two Flux resources:
+### Management Cluster Bootstrap
+
+Each management cluster bootstrap file creates two Flux resources:
 
 ```yaml
 # 1. GitRepository - Points to this repo
@@ -135,17 +130,34 @@ metadata:
   name: gitops-<region>-<az>
   namespace: kommander
 
-# 2. Kustomization - Points to region/az path
+# 2. Kustomization - Points to management-cluster path
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: clusterops-<region>-<az>
   namespace: kommander
 spec:
-  path: ./region-<name>/az<n>
+  path: ./region-<name>/az<n>/management-cluster
 ```
 
-## Flux Kustomization Dependencies
+### Workload Cluster Bootstrap
+
+Each workload cluster gets its own Flux installation in `dm-nkp-gitops-workload` namespace:
+
+```yaml
+# GitRepository - Points to this repo
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: dm-nkp-gitops-infra
+  namespace: dm-nkp-gitops-workload
+
+# Kustomizations - Point to cluster-specific paths
+# - infrastructure: ./region-usa/az1/workload-clusters/<cluster>/infrastructure
+# - apps: ./region-usa/az1/workload-clusters/<cluster>/apps
+```
+
+## Flux Kustomization Dependencies (Management Cluster)
 
 ```
 Level 0 (No dependencies):
@@ -169,41 +181,36 @@ Level 2 (Depends on project-definitions):
 
 1. Create region directory structure:
    ```bash
-   mkdir -p region-<name>/{az1,az2,az3}
+   mkdir -p region-<name>/az1/{management-cluster,workload-clusters}
    ```
 
-2. For each AZ, create:
-   - `bootstrap.yaml` - Copy from existing and update names
+2. For each AZ, create management-cluster structure:
+   - `bootstrap.yaml` - Copy from existing and update names/paths
    - `kustomization.yaml` - Start with empty resources
-   - `README.md` - Document the AZ
+   - Copy subdirectories from active AZ when ready
 
-3. Copy the structure from `region-usa/az1/` when ready to configure
-
-4. Update this README with new region status
+3. Update this README with new region status
 
 ## Adding a New AZ in Existing Region
 
-1. The `bootstrap.yaml` and `kustomization.yaml` already exist
-
-2. Copy structure from an active AZ:
+1. Copy structure from an active AZ:
    ```bash
-   cp -r region-usa/az1/{namespaces,global,workspaces} region-usa/az2/
+   cp -r region-usa/az1/* region-usa/az2/
    ```
 
-3. Update all configurations:
+2. Update all configurations:
    - Namespace names
    - Workspace names
    - Cluster names and IPs
    - Sealed secrets (regenerate for new cluster)
    - Prism Central endpoints
-
-4. Update `region-<name>/az<n>/kustomization.yaml` to reference resources
+   - All path references in flux-ks.yaml files
 
 ## Adding a New Workspace
 
 1. Create workspace directory:
    ```bash
-   mkdir -p region-<name>/az<n>/workspaces/<workspace-name>
+   mkdir -p region-<name>/az<n>/management-cluster/workspaces/<workspace-name>
    ```
 
 2. Add required files:
@@ -213,14 +220,15 @@ Level 2 (Depends on project-definitions):
    - `rbac/flux-ks.yaml`
    - etc.
 
-3. Update `region-<name>/az<n>/workspaces/kustomization.yaml`
+3. Update `management-cluster/workspaces/kustomization.yaml`
 
-## Adding a New Cluster
+## Adding a New CAPI Cluster
 
-1. Add cluster YAML under `.../clusters/bases/`
+1. Add cluster YAML under `.../management-cluster/workspaces/<ws>/clusters/bases/`
 2. Add overlay patch under `.../clusters/overlays/<version>/`
 3. Add sealed secrets under `.../clusters/sealed-secrets/`
 4. Update the respective `kustomization.yaml` files
+5. Create workload cluster GitOps folder under `workload-clusters/<cluster-name>/`
 
 ## Currently Active Configuration
 
@@ -233,7 +241,7 @@ Level 2 (Depends on project-definitions):
 | Workload Clusters | dm-nkp-workload-1, dm-nkp-workload-2 | 1 CP + 3 workers each |
 | Project | dm-dev-project | Development project |
 
-### Platform Applications
+### Platform Applications (Management Cluster)
 
 - Sealed Secrets Controller
 - Kube Prometheus Stack
@@ -248,7 +256,7 @@ Level 2 (Depends on project-definitions):
 
 ## Troubleshooting
 
-### Check Flux Status
+### Check Flux Status (Management Cluster)
 
 ```bash
 # Check GitRepository
@@ -262,14 +270,25 @@ kubectl get kustomization -n dm-nkp-gitops
 flux get all -A
 ```
 
+### Check Flux Status (Workload Cluster)
+
+```bash
+export KUBECONFIG=~/.kube/dm-nkp-workload-1.kubeconfig
+
+# Check Flux resources
+kubectl get gitrepository,kustomization -n dm-nkp-gitops-workload
+```
+
 ### Force Reconciliation
 
 ```bash
-# Reconcile GitRepository
+# Management cluster
 flux reconcile source git gitops-usa-az1 -n kommander
-
-# Reconcile Kustomization
 flux reconcile kustomization clusterops-usa-az1 -n kommander
+
+# Workload cluster
+flux reconcile source git dm-nkp-gitops-infra -n dm-nkp-gitops-workload
+flux reconcile kustomization infrastructure -n dm-nkp-gitops-workload
 ```
 
 ### View Flux Logs
