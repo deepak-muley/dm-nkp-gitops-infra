@@ -36,14 +36,34 @@ spec:
   timeout: 60s
   url: https://github.com/deepak-muley/dm-nkp-gitops-infra.git
 ---
+# Stage 1: Install sealed-secrets-controller (provides CRDs)
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-controllers
+  namespace: dm-nkp-gitops-workload
+spec:
+  interval: 10m
+  path: ./region-usa/az1/workload-clusters/_base/infrastructure/sealed-secrets-controller
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: dm-nkp-gitops-infra
+    namespace: dm-nkp-gitops-workload
+  timeout: 5m
+  wait: true
+---
+# Stage 2: Apply sealed secrets (depends on controller CRDs)
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: infrastructure
   namespace: dm-nkp-gitops-workload
 spec:
+  dependsOn:
+    - name: infrastructure-controllers
   interval: 10m
-  path: ./region-usa/az1/workload-clusters/dm-nkp-workload-1/infrastructure
+  path: ./region-usa/az1/workload-clusters/dm-nkp-workload-1/infrastructure/sealed-secrets
   prune: true
   sourceRef:
     kind: GitRepository
