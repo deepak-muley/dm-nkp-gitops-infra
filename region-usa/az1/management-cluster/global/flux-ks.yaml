@@ -9,5 +9,5 @@ spec:
   prune: true
   sourceRef:
     kind: GitRepository
-    name: gitops-demo
+    name: gitops-usa-az1
     namespace: kommander
