@@ -35,5 +35,12 @@ spec:
       - "mesosphere/"
       - "docker.io/mesosphere/"
 
+      # NKP Platform Components
+      - "velero/"                    # Velero backup tool (kommander)
+      - "openpolicyagent/"           # OPA Gatekeeper (kommander)
+      
+      # Cloud Provider Registries
+      - "mcr.microsoft.com/"         # Microsoft Container Registry (Azure)
+
       # Add your organization's private registries below
       # - "your-registry.example.com/"
