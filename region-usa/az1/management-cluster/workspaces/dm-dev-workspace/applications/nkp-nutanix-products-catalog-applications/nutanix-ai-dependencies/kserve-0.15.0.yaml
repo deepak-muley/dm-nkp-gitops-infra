@@ -3,7 +3,7 @@
 apiVersion: apps.kommander.d2iq.io/v1alpha3
 kind: AppDeployment
 metadata:
-  name: kserve-0.15.0
+  name: kserve
   namespace: dm-dev-workspace
   annotations:
     kustomize.toolkit.fluxcd.io/ssa: merge

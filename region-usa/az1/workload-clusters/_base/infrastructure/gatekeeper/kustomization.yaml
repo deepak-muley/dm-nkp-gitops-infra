@@ -11,4 +11,3 @@ resources:
   - ../../../../_common/policies/gatekeeper/constraint-templates/
   # Reference the shared constraints
   - ../../../../_common/policies/gatekeeper/constraints/
-

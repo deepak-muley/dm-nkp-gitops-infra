@@ -1,7 +1,7 @@
 apiVersion: apps.kommander.d2iq.io/v1alpha3
 kind: AppDeployment
 metadata:
-  name: nutanix-ai-2.5.0
+  name: nutanix-ai
   namespace: dm-dev-workspace
   annotations:
     kustomize.toolkit.fluxcd.io/ssa: merge

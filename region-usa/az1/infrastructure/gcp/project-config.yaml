@@ -139,4 +139,3 @@ data:
       kubernetes-service-accounts:
         - namespace: default
           name: default
-
