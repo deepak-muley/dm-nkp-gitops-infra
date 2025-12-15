@@ -1,10 +1,11 @@
 # Gatekeeper Policies - Main Kustomization
-# This aggregates all constraint templates and constraints
+# Uses separate Flux Kustomizations for proper ordering:
+# 1. Constraint Templates (must be created first)
+# 2. Constraints (depends on templates being ready)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  # Constraint Templates must be applied BEFORE constraints
-  - constraint-templates
-  # Constraints that use the templates
-  - constraints
-
+  # Flux Kustomization for templates (applied first)
+  - flux-ks-templates.yaml
+  # Flux Kustomization for constraints (waits for templates)
+  - flux-ks-constraints.yaml
