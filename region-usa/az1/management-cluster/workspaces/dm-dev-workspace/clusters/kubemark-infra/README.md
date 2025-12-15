@@ -72,35 +72,43 @@ kubemark-infra/
 └── README.md
 ```
 
+## How Kubemark Works
+
+**Important:** Kubemark does NOT create standalone clusters!
+
+Instead, it adds **hollow worker nodes** to an **existing cluster** for scale testing. The hollow nodes:
+- Run as pods in the management cluster
+- Simulate real node behavior (scheduling, kubelet API, etc.)
+- Consume minimal resources (~50Mi memory each)
+- Join an existing cluster's control plane
+
 ## Cluster Configuration
 
-The default cluster template (`bases/kubemark-cluster.yaml`) creates:
+The default template (`bases/kubemark-cluster.yaml`) adds hollow nodes to `dm-nkp-workload-1`:
 
-- **1 control plane node** (hollow)
-- **10 worker nodes** (hollow, scalable to 100)
-- **CIDR ranges:**
-  - Pods: 192.168.0.0/16
-  - Services: 10.96.0.0/12
+- **10 hollow worker nodes** (scalable to 100 via autoscaler)
+- **Kubernetes version:** v1.34.1 (matches the target cluster)
 
-### Customizing the Cluster
+### Customizing
 
-1. **Change node count:**
+1. **Change target cluster:**
+   ```yaml
+   # Update all references from dm-nkp-workload-1 to your cluster
+   spec:
+     clusterName: dm-nkp-workload-2  # Target a different cluster
+   ```
+
+2. **Change node count:**
    ```yaml
    spec:
      replicas: 50  # Number of hollow nodes
    ```
 
-2. **Enable autoscaling:**
+3. **Enable autoscaling:**
    ```yaml
    annotations:
      cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "10"
      cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "500"
-   ```
-
-3. **Change Kubernetes version:**
-   ```yaml
-   spec:
-     version: v1.30.0
    ```
 
 ## Deployment

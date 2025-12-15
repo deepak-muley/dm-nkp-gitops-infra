@@ -1,133 +1,83 @@
 ---
-# Kubemark Cluster for performance testing and simulation
-# This creates a cluster with hollow (simulated) nodes for testing at scale
-apiVersion: cluster.x-k8s.io/v1beta1
-kind: Cluster
-metadata:
-  name: dm-kubemark-cluster-1
-  namespace: dm-dev-workspace
-  labels:
-    cluster.x-k8s.io/provider: kubemark
-spec:
-  clusterNetwork:
-    pods:
-      cidrBlocks:
-        - 192.168.0.0/16
-    services:
-      cidrBlocks:
-        - 10.96.0.0/12
-  controlPlaneRef:
-    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-    kind: KubeadmControlPlane
-    name: dm-kubemark-cluster-1-control-plane
-  infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
-    kind: KubemarkCluster
-    name: dm-kubemark-cluster-1
+# Kubemark Hollow Nodes for Scale Testing
+#
+# IMPORTANT: Kubemark does NOT create standalone clusters!
+# It adds "hollow" worker nodes to an EXISTING cluster for scale testing.
+#
+# Usage: Update CLUSTER_NAME to match an existing cluster in your workspace
+# (e.g., dm-nkp-workload-1 or dm-nkp-workload-2)
+#
+# These hollow nodes simulate real worker nodes but run as pods in the
+# management cluster, consuming minimal resources (~50Mi each).
+
+# Configuration - Update these values
+# CLUSTER_NAME: The existing cluster to add hollow nodes to
+# Set this to one of your existing clusters (dm-nkp-workload-1 or dm-nkp-workload-2)
+
 ---
-# KubemarkCluster infrastructure spec
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
-kind: KubemarkCluster
-metadata:
-  name: dm-kubemark-cluster-1
-  namespace: dm-dev-workspace
-spec: {}
----
-# Control Plane configuration
-apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-kind: KubeadmControlPlane
-metadata:
-  name: dm-kubemark-cluster-1-control-plane
-  namespace: dm-dev-workspace
-spec:
-  replicas: 1
-  version: v1.30.0
-  machineTemplate:
-    infrastructureRef:
-      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
-      kind: KubemarkMachineTemplate
-      name: dm-kubemark-cluster-1-control-plane
-  kubeadmConfigSpec:
-    initConfiguration:
-      nodeRegistration:
-        kubeletExtraArgs:
-          # Kubemark specific settings
-          provider-id: "kubemark://{{ ds.meta_data.local_hostname }}"
-    joinConfiguration:
-      nodeRegistration:
-        kubeletExtraArgs:
-          provider-id: "kubemark://{{ ds.meta_data.local_hostname }}"
-    clusterConfiguration:
-      apiServer:
-        extraArgs:
-          cloud-provider: external
-      controllerManager:
-        extraArgs:
-          cloud-provider: external
----
-# Control Plane Machine Template
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
-kind: KubemarkMachineTemplate
-metadata:
-  name: dm-kubemark-cluster-1-control-plane
-  namespace: dm-dev-workspace
-spec:
-  template:
-    spec:
-      # ExtraMounts can be used to mount additional volumes into the kubemark pod
-      extraMounts: []
----
-# Worker MachineDeployment for hollow nodes
+# MachineDeployment for Kubemark hollow nodes
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
 metadata:
-  name: dm-kubemark-cluster-1-md-0
+  name: dm-nkp-workload-1-kubemark-md-0
   namespace: dm-dev-workspace
   annotations:
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "5"
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "100"
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "10"
 spec:
-  clusterName: dm-kubemark-cluster-1
+  clusterName: dm-nkp-workload-1
   replicas: 10
   selector:
-    matchLabels: {}
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: dm-nkp-workload-1
+      cluster.x-k8s.io/deployment-name: dm-nkp-workload-1-kubemark-md-0
   template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: dm-nkp-workload-1
+        cluster.x-k8s.io/deployment-name: dm-nkp-workload-1-kubemark-md-0
+        node-type: kubemark-hollow
     spec:
-      clusterName: dm-kubemark-cluster-1
-      version: v1.30.0
       bootstrap:
         configRef:
           apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
           kind: KubeadmConfigTemplate
-          name: dm-kubemark-cluster-1-md-0
+          name: dm-nkp-workload-1-kubemark-md-0
+      clusterName: dm-nkp-workload-1
       infrastructureRef:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
+        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
         kind: KubemarkMachineTemplate
-        name: dm-kubemark-cluster-1-md-0
+        name: dm-nkp-workload-1-kubemark-md-0
+      version: v1.34.1
 ---
-# Worker Machine Template
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
+# KubemarkMachineTemplate - defines the hollow node configuration
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
 kind: KubemarkMachineTemplate
 metadata:
-  name: dm-kubemark-cluster-1-md-0
+  name: dm-nkp-workload-1-kubemark-md-0
   namespace: dm-dev-workspace
+  labels:
+    cluster.x-k8s.io/cluster-name: dm-nkp-workload-1
 spec:
   template:
     spec:
-      # Hollow nodes simulate worker node behavior without actual compute
-      extraMounts: []
+      extraMounts:
+        # Mount containerd socket for pod scheduling
+        # See: https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/issues/22
+        - name: containerd-sock
+          containerPath: /run/containerd/containerd.sock
+          hostPath: /run/containerd/containerd.sock
+          type: Socket
 ---
-# Bootstrap config for workers
+# Bootstrap configuration for hollow nodes
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
 metadata:
-  name: dm-kubemark-cluster-1-md-0
+  name: dm-nkp-workload-1-kubemark-md-0
   namespace: dm-dev-workspace
 spec:
   template:
     spec:
       joinConfiguration:
         nodeRegistration:
-          kubeletExtraArgs:
-            provider-id: "kubemark://{{ ds.meta_data.local_hostname }}"
-
+          name: '{{ ds.meta_data.local_hostname }}'
