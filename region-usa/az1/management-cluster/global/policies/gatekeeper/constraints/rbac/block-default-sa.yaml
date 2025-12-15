@@ -13,3 +13,17 @@ spec:
     kinds:
       - apiGroups: [""]
         kinds: ["Pod"]
+    # Exclude pure K8s and non-Nutanix cloud providers
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - capi-system
+      - capi-kubeadm-bootstrap-system
+      - capi-kubeadm-control-plane-system
+      - capa-system
+      - capz-system
+      - capg-system
+      - capv-system
+      - cappp-system
+      - caaph-system
