@@ -1,0 +1,120 @@
+# Prometheus Alerts for Network/Firewall Issues
+# These alerts help detect when firewall rules might be missing
+#
+# Deploy to your Prometheus/Alertmanager stack
+#
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: firewall-connectivity-alerts
+  namespace: kommander
+  labels:
+    app: kube-prometheus-stack
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: firewall-connectivity
+      rules:
+        # Alert when pods can't pull images (possible registry firewall issue)
+        - alert: ImagePullBackOff
+          expr: |
+            kube_pod_container_status_waiting_reason{reason="ImagePullBackOff"} > 0
+          for: 5m
+          labels:
+            severity: warning
+            category: firewall
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} can't pull image"
+            description: |
+              Pod is stuck in ImagePullBackOff state. This could indicate:
+              - Firewall blocking access to container registry
+              - Registry credentials issue
+              - Image doesn't exist
+              Check: kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
+            runbook: "Check FIREWALL-REQUIREMENTS.md for required registry access"
+
+        # Alert when pods can't reach external services
+        - alert: PodNetworkErrors
+          expr: |
+            increase(container_network_transmit_errors_total[5m]) > 10
+          for: 5m
+          labels:
+            severity: warning
+            category: firewall
+          annotations:
+            summary: "Network errors in {{ $labels.namespace }}/{{ $labels.pod }}"
+            description: "High network transmit errors detected. Possible firewall issue."
+
+        # Alert when services have no endpoints (backend pods unreachable)
+        - alert: ServiceWithNoEndpoints
+          expr: |
+            kube_endpoint_address_available == 0
+          for: 10m
+          labels:
+            severity: warning
+            category: connectivity
+          annotations:
+            summary: "Service {{ $labels.namespace }}/{{ $labels.endpoint }} has no endpoints"
+            description: "Service has no available endpoints. Pods may not be running or network issue."
+
+        # Alert when API server is unreachable from nodes
+        - alert: KubeAPIServerDown
+          expr: |
+            up{job="apiserver"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            category: firewall
+          annotations:
+            summary: "Kubernetes API server unreachable"
+            description: |
+              API server is not responding. Check:
+              - Firewall rules for port 6443
+              - API server pod health
+              - Network connectivity
+
+        # Alert when etcd is unreachable
+        - alert: EtcdUnreachable
+          expr: |
+            up{job=~".*etcd.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            category: firewall
+          annotations:
+            summary: "etcd is unreachable"
+            description: |
+              etcd cluster is not responding. Check:
+              - Firewall rules for ports 2379, 2380
+              - etcd pod health
+
+        # Alert when kubelet is unreachable
+        - alert: KubeletUnreachable
+          expr: |
+            up{job="kubelet"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            category: firewall
+          annotations:
+            summary: "Kubelet on {{ $labels.node }} is unreachable"
+            description: |
+              Kubelet is not responding. Check:
+              - Firewall rules for port 10250
+              - Node health
+
+        # Alert for connectivity test job failures
+        - alert: ConnectivityTestFailed
+          expr: |
+            kube_job_status_failed{job_name=~"network-connectivity-test.*"} > 0
+          for: 1m
+          labels:
+            severity: warning
+            category: firewall
+          annotations:
+            summary: "Network connectivity test failed"
+            description: |
+              The network connectivity test job failed. Check job logs:
+              kubectl logs -n default job/network-connectivity-test
+              Review FIREWALL-REQUIREMENTS.md for required ports.
+

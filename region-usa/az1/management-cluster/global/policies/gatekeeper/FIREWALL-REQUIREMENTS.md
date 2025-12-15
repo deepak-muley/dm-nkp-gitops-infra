@@ -194,10 +194,82 @@ curl -k https://<traefik-lb-ip>/
 
 ---
 
-## Gatekeeper Policy
+## How to Detect Missing Firewall Rules
 
-A Gatekeeper policy is included to warn when services expose unexpected external ports.
-See: `constraints/network-security/validate-external-ports.yaml`
+### 1. Gatekeeper Policy (Preventive)
+
+The `validate-external-ports` policy warns when NEW services expose ports not in the approved list:
+
+```bash
+# Check for violations
+kubectl get constraints validate-external-ports -o yaml | grep -A 20 violations
+```
+
+**Limitation:** Gatekeeper validates Kubernetes resources, not actual network connectivity.
+
+### 2. Connectivity Test Job (Active Testing)
+
+Run periodic connectivity tests to verify firewall rules are working:
+
+```bash
+# Run one-time test
+kubectl apply -f network-tests/connectivity-test-job.yaml
+kubectl logs job/network-connectivity-test
+
+# Or use the CronJob for hourly testing
+kubectl apply -f network-tests/connectivity-test-job.yaml
+```
+
+See: `network-tests/connectivity-test-job.yaml`
+
+### 3. Prometheus Alerts (Reactive Monitoring)
+
+Deploy alerts that detect firewall-related failures:
+
+```bash
+kubectl apply -f network-tests/prometheus-alerts.yaml
+```
+
+**Alerts included:**
+| Alert | Indicates |
+|-------|-----------|
+| `ImagePullBackOff` | Can't reach container registry |
+| `KubeAPIServerDown` | Port 6443 blocked |
+| `EtcdUnreachable` | Ports 2379/2380 blocked |
+| `KubeletUnreachable` | Port 10250 blocked |
+| `ConnectivityTestFailed` | General connectivity issue |
+
+See: `network-tests/prometheus-alerts.yaml`
+
+### 4. Common Symptoms of Missing Firewall Rules
+
+| Symptom | Likely Cause | Ports to Check |
+|---------|--------------|----------------|
+| Pods stuck in `ImagePullBackOff` | Registry blocked | 443 outbound to registries |
+| Pods stuck in `Pending` | API server unreachable | 6443 |
+| `kubectl exec` fails | Kubelet unreachable | 10250 |
+| Pod-to-pod traffic fails | CNI ports blocked | 6081 (Geneve) or 8472 (VXLAN) |
+| Nodes `NotReady` | Multiple ports | 6443, 10250, 2379-2380 |
+| Services unreachable | LoadBalancer/NodePort | Check specific service ports |
+
+### 5. Quick Diagnostic Commands
+
+```bash
+# Check for ImagePull issues
+kubectl get pods -A | grep -E "ImagePull|ErrImage"
+
+# Check node connectivity
+kubectl get nodes -o wide
+
+# Test API server from a pod
+kubectl run test --rm -it --image=busybox -- nc -zv kubernetes.default.svc 443
+
+# Check service endpoints
+kubectl get endpoints -A | grep "<none>"
+
+# View recent events for network issues
+kubectl get events -A --field-selector reason=FailedMount,reason=FailedScheduling,reason=NetworkNotReady
+```
 
 ---
 
