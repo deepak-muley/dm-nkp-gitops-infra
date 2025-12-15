@@ -39,14 +39,14 @@ spec:
       # Standard web traffic
       - 80      # HTTP
       - 443     # HTTPS
-      
+
       # NKP Platform specific
       - 5000    # Container registry
       - 8085    # Ceph dashboard
-      
+
       # Kubernetes API (if exposed via LB)
       - 6443    # Kubernetes API server
-      
+
       # Common application ports (add as needed)
       # - 8080  # HTTP alternate
       # - 8443  # HTTPS alternate
@@ -65,7 +65,7 @@ spec:
     exemptServices:
       # NKP platform services that need external access
       - "kommander/kommander-traefik"
-      
+
       # Add customer exemptions below
       # - "my-namespace/my-service"
 

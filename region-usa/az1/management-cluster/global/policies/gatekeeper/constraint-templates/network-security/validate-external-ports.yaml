@@ -47,39 +47,39 @@ spec:
         violation[{"msg": msg}] {
           input.review.object.kind == "Service"
           service := input.review.object
-          
+
           # Check if it's an externally exposed service
           service.spec.type == "LoadBalancer"
-          
+
           # Check if service is exempt
           not is_exempt(service)
-          
+
           # Get the port
           port := service.spec.ports[_]
-          
+
           # Check if port is in allowed list
           not port_allowed(port.port)
-          
+
           msg := sprintf("Service %s/%s exposes port %v via LoadBalancer. This port is not in the approved firewall list. Update FIREWALL-REQUIREMENTS.md if this is intentional.", [service.metadata.namespace, service.metadata.name, port.port])
         }
 
         violation[{"msg": msg}] {
           input.review.object.kind == "Service"
           service := input.review.object
-          
+
           # Check NodePort services
           service.spec.type == "NodePort"
-          
+
           # Check if service is exempt
           not is_exempt(service)
-          
+
           # Get the NodePort
           port := service.spec.ports[_]
           port.nodePort != null
-          
+
           # Check if NodePort is in allowed range
           not nodeport_in_range(port.nodePort)
-          
+
           msg := sprintf("Service %s/%s uses NodePort %v which is outside the allowed range (%v-%v). Ensure firewall rules are updated.", [service.metadata.namespace, service.metadata.name, port.nodePort, input.parameters.allowedNodePortRange.min, input.parameters.allowedNodePortRange.max])
         }
 

@@ -2,9 +2,20 @@
 
 This document lists all ports that need to be opened in your firewall for NKP to function properly.
 
-> **⚠️ AIRGAPPED ENVIRONMENTS**: If you are running an airgapped/disconnected environment, 
-> you do NOT need to open outbound internet ports. Only internal cluster communication 
-> and management access ports apply.
+## 📚 Official Nutanix Documentation
+
+> **For the authoritative and complete list of ports, always refer to the official Nutanix documentation:**
+>
+> | Environment | Documentation Link |
+> |-------------|-------------------|
+> | **Connected (Internet Access)** | [NKP Ports and Protocols](https://portal.nutanix.com/page/documents/ports-and-protocols?productType=Nutanix%20Kubernetes%20Platform) |
+> | **Airgapped (Disconnected)** | [NKP Airgap Ports and Protocols](https://portal.nutanix.com/page/documents/ports-and-protocols?productType=Nutanix%20Kubernetes%20Platform%20%28Airgap%29) |
+
+---
+
+> **⚠️ AIRGAPPED ENVIRONMENTS**: If you are running an airgapped/disconnected environment,
+> you do NOT need to open outbound internet ports. Only internal cluster communication
+> and management access ports apply. See the [official airgapped documentation](https://portal.nutanix.com/page/documents/ports-and-protocols?productType=Nutanix%20Kubernetes%20Platform%20%28Airgap%29) for details.
 
 ---
 
@@ -120,7 +131,7 @@ This document lists all ports that need to be opened in your firewall for NKP to
 ### Airgapped Environment (No Internet)
 
 > **For airgapped environments, you do NOT need any outbound internet rules.**
-> 
+>
 > Instead, ensure:
 > 1. All container images are mirrored to your internal registry
 > 2. Internal registry is accessible from all nodes
@@ -172,7 +183,11 @@ See: `constraints/network-security/validate-external-ports.yaml`
 
 ## References
 
+### Official Nutanix Documentation (Primary Source)
+- [NKP Ports and Protocols (Connected)](https://portal.nutanix.com/page/documents/ports-and-protocols?productType=Nutanix%20Kubernetes%20Platform)
+- [NKP Ports and Protocols (Airgapped)](https://portal.nutanix.com/page/documents/ports-and-protocols?productType=Nutanix%20Kubernetes%20Platform%20%28Airgap%29)
+
+### Kubernetes & CNI Documentation
 - [Kubernetes Ports and Protocols](https://kubernetes.io/docs/reference/networking/ports-and-protocols/)
 - [Cilium System Requirements](https://docs.cilium.io/en/stable/operations/system_requirements/)
-- [NKP Documentation](https://docs.d2iq.com/nkp/)
 
