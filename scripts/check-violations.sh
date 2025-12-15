@@ -148,7 +148,7 @@ print_severity() {
 if [[ -n "$NAMESPACE" ]]; then
     print_header "GATEKEEPER VIOLATIONS SUMMARY (namespace: $NAMESPACE)"
 else
-    print_header "GATEKEEPER VIOLATIONS SUMMARY"
+print_header "GATEKEEPER VIOLATIONS SUMMARY"
 fi
 
 echo ""
@@ -172,26 +172,26 @@ if [[ -n "$NAMESPACE" ]]; then
         print_severity "$severity"
     done
 else
-    kubectl get constraints -o json 2>/dev/null | jq -r '
-    .items[] |
-    select(.status.totalViolations != null) |
-    [
-      .metadata.name,
-      (.status.totalViolations | tostring),
-      (.metadata.labels["policy-severity"] // "unknown")
-    ] | @tsv
-    ' | sort -t$'\t' -k2 -rn | while IFS=$'\t' read -r name count severity; do
-        # Pad name to 40 chars
-        printf "%-40s| %-10s | " "$name" "$count"
-        print_severity "$severity"
-    done
+kubectl get constraints -o json 2>/dev/null | jq -r '
+.items[] |
+select(.status.totalViolations != null) |
+[
+  .metadata.name,
+  (.status.totalViolations | tostring),
+  (.metadata.labels["policy-severity"] // "unknown")
+] | @tsv
+' | sort -t$'\t' -k2 -rn | while IFS=$'\t' read -r name count severity; do
+    # Pad name to 40 chars
+    printf "%-40s| %-10s | " "$name" "$count"
+    print_severity "$severity"
+done
 fi
 
 # Total violations
 if [[ -n "$NAMESPACE" ]]; then
     TOTAL=$(kubectl get constraints -o json 2>/dev/null | jq --arg ns "$NAMESPACE" '[.items[].status.violations[]? | select(.namespace == $ns)] | length')
 else
-    TOTAL=$(kubectl get constraints -o json 2>/dev/null | jq '[.items[].status.totalViolations // 0] | add')
+TOTAL=$(kubectl get constraints -o json 2>/dev/null | jq '[.items[].status.totalViolations // 0] | add')
 fi
 echo ""
 echo -e "----------------------------------------|------------|----------"
@@ -204,17 +204,17 @@ if [[ -n "$NAMESPACE" ]]; then
     # Skip this section when filtering by namespace (it would only show the one namespace)
     :
 else
-    print_header "VIOLATIONS BY NAMESPACE"
+print_header "VIOLATIONS BY NAMESPACE"
 
-    kubectl get constraints -o json 2>/dev/null | jq -r '
-    [.items[] | .status.violations[]? | .namespace // "cluster-scoped"] |
-    group_by(.) |
-    map({namespace: .[0], count: length}) |
-    sort_by(.count) | reverse | .[:15][] |
-    "\(.count)\t\(.namespace)"
-    ' | while IFS=$'\t' read -r count ns; do
-        printf "  %-30s %s violations\n" "$ns" "$count"
-    done
+kubectl get constraints -o json 2>/dev/null | jq -r '
+[.items[] | .status.violations[]? | .namespace // "cluster-scoped"] |
+group_by(.) |
+map({namespace: .[0], count: length}) |
+sort_by(.count) | reverse | .[:15][] |
+"\(.count)\t\(.namespace)"
+' | while IFS=$'\t' read -r count ns; do
+    printf "  %-30s %s violations\n" "$ns" "$count"
+done
 fi
 
 #######################################
@@ -237,15 +237,15 @@ if [[ -n "$NAMESPACE" ]]; then
         printf "  %-25s %s violations\n" "$category" "$count"
     done
 else
-    kubectl get constraints -o json 2>/dev/null | jq -r '
-    [.items[] | {category: (.metadata.labels["policy-category"] // "unknown"), violations: (.status.totalViolations // 0)}] |
-    group_by(.category) |
-    map({category: .[0].category, total: (map(.violations) | add)}) |
-    sort_by(.total) | reverse | .[] |
-    "\(.total)\t\(.category)"
-    ' | while IFS=$'\t' read -r count category; do
-        printf "  %-25s %s violations\n" "$category" "$count"
-    done
+kubectl get constraints -o json 2>/dev/null | jq -r '
+[.items[] | {category: (.metadata.labels["policy-category"] // "unknown"), violations: (.status.totalViolations // 0)}] |
+group_by(.category) |
+map({category: .[0].category, total: (map(.violations) | add)}) |
+sort_by(.total) | reverse | .[] |
+"\(.total)\t\(.category)"
+' | while IFS=$'\t' read -r count category; do
+    printf "  %-25s %s violations\n" "$category" "$count"
+done
 fi
 
 #######################################
@@ -271,9 +271,9 @@ if [[ "$SUMMARY_ONLY" != true ]]; then
         '
     else
         # Get all constraint data once and process all violations
-        kubectl get constraints -o json 2>/dev/null | jq -r '
-        .items[] |
-        select(.status.totalViolations > 0) |
+    kubectl get constraints -o json 2>/dev/null | jq -r '
+    .items[] |
+    select(.status.totalViolations > 0) |
         {
           name: .metadata.name,
           violations: .status.violations,
@@ -294,7 +294,7 @@ if [[ "$EXPORT_JSON" == true ]]; then
     if [[ -n "$NAMESPACE" ]]; then
         EXPORT_FILE="violations-report-${NAMESPACE}-$(date +%Y%m%d-%H%M%S).json"
     else
-        EXPORT_FILE="violations-report-$(date +%Y%m%d-%H%M%S).json"
+    EXPORT_FILE="violations-report-$(date +%Y%m%d-%H%M%S).json"
     fi
     print_header "EXPORTING TO $EXPORT_FILE"
 
@@ -315,19 +315,19 @@ if [[ "$EXPORT_JSON" == true ]]; then
             ] | sort_by(.violations) | reverse
         }' > "$EXPORT_FILE"
     else
-        kubectl get constraints -o json 2>/dev/null | jq '{
-            generated: (now | strftime("%Y-%m-%d %H:%M:%S")),
-            cluster: "'"$CLUSTER_NAME"'",
-            total_violations: [.items[].status.totalViolations // 0] | add,
-            by_constraint: [.items[] | select(.status.totalViolations > 0) | {
-                name: .metadata.name,
-                category: .metadata.labels["policy-category"],
-                severity: .metadata.labels["policy-severity"],
-                violations: .status.totalViolations,
-                details: .status.violations
-            }] | sort_by(.violations) | reverse,
-            by_namespace: ([.items[] | .status.violations[]? | .namespace // "cluster-scoped"] | group_by(.) | map({namespace: .[0], count: length}) | sort_by(.count) | reverse)
-        }' > "$EXPORT_FILE"
+    kubectl get constraints -o json 2>/dev/null | jq '{
+        generated: (now | strftime("%Y-%m-%d %H:%M:%S")),
+        cluster: "'"$CLUSTER_NAME"'",
+        total_violations: [.items[].status.totalViolations // 0] | add,
+        by_constraint: [.items[] | select(.status.totalViolations > 0) | {
+            name: .metadata.name,
+            category: .metadata.labels["policy-category"],
+            severity: .metadata.labels["policy-severity"],
+            violations: .status.totalViolations,
+            details: .status.violations
+        }] | sort_by(.violations) | reverse,
+        by_namespace: ([.items[] | .status.violations[]? | .namespace // "cluster-scoped"] | group_by(.) | map({namespace: .[0], count: length}) | sort_by(.count) | reverse)
+    }' > "$EXPORT_FILE"
     fi
 
     echo -e "${GREEN}Exported to: $EXPORT_FILE${NC}"
