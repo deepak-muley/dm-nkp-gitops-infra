@@ -1,0 +1,96 @@
+# AWS VPC Configuration for AZ1
+# This file contains non-sensitive metadata about AWS infrastructure
+# NOTE: AWS credentials should be managed via AWS IAM/IRSA, NOT stored here
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-vpc-az1-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: aws
+    infrastructure.gitops/component: vpc
+    infrastructure.gitops/region: usa
+    infrastructure.gitops/az: az1
+data:
+  # AWS Region
+  aws-region: "us-east-1"
+
+  # VPC Configuration
+  vpc-name: "az1-eks-vpc"
+  vpc-cidr: "10.200.0.0/16"
+
+  # Environment
+  environment: "production"
+
+  # Subnet configuration
+  subnets: |
+    public:
+      - name: az1-public-1a
+        az: us-east-1a
+        cidr: 10.200.1.0/24
+        purpose: load-balancers, nat-gateways
+      - name: az1-public-1b
+        az: us-east-1b
+        cidr: 10.200.2.0/24
+        purpose: load-balancers
+      - name: az1-public-1c
+        az: us-east-1c
+        cidr: 10.200.3.0/24
+        purpose: load-balancers
+
+    private:
+      - name: az1-private-1a
+        az: us-east-1a
+        cidr: 10.200.10.0/24
+        purpose: eks-nodes
+      - name: az1-private-1b
+        az: us-east-1b
+        cidr: 10.200.11.0/24
+        purpose: eks-nodes
+      - name: az1-private-1c
+        az: us-east-1c
+        cidr: 10.200.12.0/24
+        purpose: eks-nodes
+
+  # EKS specific configuration
+  eks-config: |
+    cluster-endpoint-access: private
+    kubernetes-network-config:
+      service-ipv4-cidr: 172.20.0.0/16
+    logging:
+      - api
+      - audit
+      - authenticator
+      - controllerManager
+      - scheduler
+
+---
+# IAM Configuration Reference
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-iam-az1-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: aws
+    infrastructure.gitops/component: iam
+data:
+  # IAM role names (ARNs should not be stored, reference by name)
+  roles: |
+    - name: az1-eks-cluster-role
+      purpose: EKS cluster service role
+      managed-policies:
+        - AmazonEKSClusterPolicy
+
+    - name: az1-eks-node-role
+      purpose: EKS node group role
+      managed-policies:
+        - AmazonEKSWorkerNodePolicy
+        - AmazonEC2ContainerRegistryReadOnly
+        - AmazonEKS_CNI_Policy
+
+    - name: az1-eks-pod-identity-role
+      purpose: Pod identity for workloads
+      trust: eks-pod-identity
+

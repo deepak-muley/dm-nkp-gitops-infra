@@ -1,0 +1,142 @@
+# GCP Project Configuration for AZ1
+# This file contains non-sensitive metadata about GCP infrastructure
+# NOTE: GCP credentials should be managed via Workload Identity, NOT stored here
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-project-az1-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: gcp
+    infrastructure.gitops/component: project
+    infrastructure.gitops/region: usa
+    infrastructure.gitops/az: az1
+data:
+  # GCP Region
+  gcp-region: "us-east1"
+  gcp-zones: "us-east1-b,us-east1-c,us-east1-d"
+
+  # Project (name only, not ID)
+  project-name: "az1-gke-project"
+
+  # Environment
+  environment: "production"
+
+  # Labels applied to all resources
+  labels: |
+    environment: production
+    region: usa
+    az: az1
+    managed-by: gitops
+    cost-center: platform
+
+---
+# VPC Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-vpc-az1-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: gcp
+    infrastructure.gitops/component: vpc
+data:
+  # VPC Network
+  vpc-name: "az1-gke-vpc"
+  vpc-mode: "custom"
+
+  # Subnet configuration
+  subnets: |
+    - name: az1-gke-subnet
+      region: us-east1
+      primary-range: 10.220.0.0/20
+      purpose: gke-nodes
+      secondary-ranges:
+        - name: az1-pods
+          range: 10.221.0.0/16
+          purpose: pod-ips
+        - name: az1-services
+          range: 10.222.0.0/20
+          purpose: service-ips
+      private-google-access: true
+
+  # Cloud NAT configuration
+  cloud-nat: |
+    name: az1-gke-nat
+    router: az1-gke-router
+    nat-ip-allocation: auto
+    source-subnetwork-ip-ranges: all
+
+---
+# GKE Configuration Reference
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-gke-az1-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: gcp
+    infrastructure.gitops/component: gke
+data:
+  # GKE specific settings
+  gke-config: |
+    release-channel: regular
+    networking-mode: VPC_NATIVE
+    private-cluster: true
+    master-authorized-networks: true
+
+    # Control plane configuration
+    master-ipv4-cidr: 172.16.0.0/28
+
+    # Default node pool
+    default-node-pool:
+      machine-type: e2-standard-4
+      disk-size-gb: 100
+      disk-type: pd-balanced
+      max-pods-per-node: 110
+
+      # Autoscaling
+      autoscaling:
+        enabled: true
+        min-nodes: 1
+        max-nodes: 10
+
+    # Add-ons
+    addons:
+      - horizontal-pod-autoscaling
+      - http-load-balancing
+      - gce-persistent-disk-csi-driver
+      - gcp-filestore-csi-driver
+
+    # Security
+    workload-identity: enabled
+    shielded-nodes: enabled
+    secure-boot: enabled
+
+---
+# Service Account Reference
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-iam-az1-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: gcp
+    infrastructure.gitops/component: iam
+data:
+  service-accounts: |
+    - name: az1-gke-nodes
+      purpose: GKE node service account
+      roles:
+        - roles/logging.logWriter
+        - roles/monitoring.metricWriter
+        - roles/monitoring.viewer
+        - roles/artifactregistry.reader
+
+    - name: az1-workload-identity
+      purpose: Workload Identity for applications
+      kubernetes-service-accounts:
+        - namespace: default
+          name: default
+

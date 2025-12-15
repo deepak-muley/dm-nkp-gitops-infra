@@ -1,0 +1,130 @@
+# Azure Resource Configuration for AZ1
+# This file contains non-sensitive metadata about Azure infrastructure
+# NOTE: Azure credentials should be managed via Managed Identity/Workload Identity, NOT stored here
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: azure-resource-az1-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: azure
+    infrastructure.gitops/component: resource-group
+    infrastructure.gitops/region: usa
+    infrastructure.gitops/az: az1
+data:
+  # Azure Region
+  azure-region: "eastus"
+
+  # Resource Group
+  resource-group-name: "az1-aks-rg"
+
+  # Environment
+  environment: "production"
+
+  # Subscription (name only, not ID)
+  subscription-name: "Production"
+
+  # Tags applied to all resources
+  tags: |
+    environment: production
+    region: usa
+    az: az1
+    managed-by: gitops
+    cost-center: platform
+
+---
+# VNet Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: azure-vnet-az1-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: azure
+    infrastructure.gitops/component: vnet
+data:
+  # Virtual Network
+  vnet-name: "az1-aks-vnet"
+  vnet-address-space: "10.210.0.0/16"
+
+  # Subnet configuration
+  subnets: |
+    - name: az1-aks-nodes-subnet
+      address-prefix: 10.210.0.0/20
+      purpose: aks-nodes
+      service-endpoints:
+        - Microsoft.Storage
+        - Microsoft.ContainerRegistry
+
+    - name: az1-aks-services-subnet
+      address-prefix: 10.210.16.0/24
+      purpose: private-endpoints
+
+    - name: az1-appgw-subnet
+      address-prefix: 10.210.17.0/24
+      purpose: application-gateway
+
+  # DNS configuration
+  dns-servers: "Azure-provided"
+
+---
+# AKS Configuration Reference
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: azure-aks-az1-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: azure
+    infrastructure.gitops/component: aks
+data:
+  # AKS specific settings
+  aks-config: |
+    network-plugin: azure
+    network-policy: calico
+    load-balancer-sku: standard
+    outbound-type: loadBalancer
+    service-cidr: 172.21.0.0/16
+    dns-service-ip: 172.21.0.10
+
+    # Node pool defaults
+    default-node-pool:
+      vm-size: Standard_D4s_v3
+      os-disk-size-gb: 128
+      max-pods: 110
+      availability-zones:
+        - "1"
+        - "2"
+        - "3"
+
+    # Add-ons
+    addons:
+      - azure-policy
+      - monitoring
+      - azure-keyvault-secrets-provider
+
+---
+# Managed Identity Reference
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: azure-identity-az1-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: azure
+    infrastructure.gitops/component: identity
+data:
+  identities: |
+    - name: az1-aks-identity
+      purpose: AKS cluster managed identity
+      role-assignments:
+        - role: Network Contributor
+          scope: az1-aks-vnet
+        - role: AcrPull
+          scope: az1-container-registry
+
+    - name: az1-workload-identity
+      purpose: Workload identity for applications
+      federated-credentials: true
+

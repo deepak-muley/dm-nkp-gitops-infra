@@ -6,6 +6,17 @@ GitOps configuration for AZ1 in the USA region.
 
 ```
 az1/
+├── infrastructure/               # Non-K8s infrastructure definitions
+│   ├── nutanix/                  # Nutanix on-prem infrastructure
+│   │   ├── prism-central.yaml    # Prism Central configuration
+│   │   └── prism-elements/       # Prism Element clusters
+│   ├── aws/                      # AWS infrastructure (for EKS)
+│   │   └── vpc-config.yaml
+│   ├── azure/                    # Azure infrastructure (for AKS)
+│   │   └── resource-config.yaml
+│   └── gcp/                      # GCP infrastructure (for GKE)
+│       └── project-config.yaml
+│
 ├── management-cluster/           # Resources for NKP management cluster
 │   ├── bootstrap.yaml            # Bootstrap manifest
 │   ├── global/                   # Cluster-wide resources
@@ -35,6 +46,19 @@ az1/
         │   └── sealed-secrets/
         └── apps/
 ```
+
+## What Defines AZ1?
+
+AZ1 represents a logical availability zone consisting of:
+
+| Layer | Provider | Description |
+|-------|----------|-------------|
+| **Infrastructure** | Nutanix | Prism Central + Prism Element clusters |
+| | AWS | VPC, Subnets, IAM in us-east-1 |
+| | Azure | Resource Group, VNet in East US |
+| | GCP | Project, VPC in us-east1 |
+| **Kubernetes** | NKP/CAPI | Management and workload clusters |
+| **Applications** | GitOps | Deployed via Flux |
 
 ## Quick Start
 
@@ -72,6 +96,7 @@ The bootstrap creates:
 
 ## Documentation
 
+- [Infrastructure README](infrastructure/README.md) - Non-K8s infrastructure definitions
 - [Management Cluster README](management-cluster/README.md)
 - [Workload Clusters README](workload-clusters/README.md)
 
@@ -79,6 +104,12 @@ The bootstrap creates:
 
 | Resource Type | Location |
 |--------------|----------|
+| **Infrastructure (Non-K8s)** | |
+| Nutanix (PC/PE) | `infrastructure/nutanix/` |
+| AWS (VPC/IAM) | `infrastructure/aws/` |
+| Azure (RG/VNet) | `infrastructure/azure/` |
+| GCP (Project/VPC) | `infrastructure/gcp/` |
+| **Kubernetes Resources** | |
 | Workspaces | `management-cluster/workspaces/` |
 | CAPI Cluster Definitions | `management-cluster/workspaces/dm-dev-workspace/clusters/` |
 | Workspace Applications | `management-cluster/workspaces/dm-dev-workspace/applications/` |

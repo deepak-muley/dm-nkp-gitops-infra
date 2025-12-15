@@ -1,0 +1,207 @@
+# Nutanix Prism Element Cluster Configuration for AZ1
+# This file contains non-sensitive metadata about the PE cluster
+# NOTE: Credentials and sensitive UUIDs are managed via sealed-secrets
+#
+# Source: Extracted from cluster templates in:
+#   management-cluster/workspaces/dm-dev-workspace/clusters/nutanix-infra/bases/
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nutanix-pe-ncn-dev-sandbox-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: nutanix
+    infrastructure.gitops/component: prism-element
+    infrastructure.gitops/region: usa
+    infrastructure.gitops/az: az1
+    infrastructure.gitops/pe-cluster: ncn-dev-sandbox
+data:
+  # Cluster identification (from cluster templates)
+  # Reference: spec.topology.variables[].value.controlPlane.nutanix.machineDetails.cluster.name
+  cluster-name: "ncn-dev-sandbox"
+  cluster-type: "development"
+
+  # Network configuration
+  # Reference: spec.topology.variables[].value.controlPlane.nutanix.machineDetails.subnets
+  primary-subnet: "vlan173"
+
+  # Storage configuration
+  # Reference: spec.topology.variables[].value.addons.csi.providers.nutanix.storageClassConfigs.volume.parameters
+  storage-container: "default-container-92034737804854"
+  storage-type: "NutanixVolumes"
+  flash-mode: "DISABLED"
+  hypervisor-attached: "ENABLED"
+  filesystem-type: "ext4"
+
+---
+# Kubernetes Clusters hosted on this PE cluster
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nutanix-pe-ncn-dev-sandbox-k8s-clusters
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: nutanix
+    infrastructure.gitops/component: resource-allocation
+data:
+  # Extracted from cluster template files
+  clusters: |
+    # ============================================================
+    # dm-nkp-workload-1
+    # ============================================================
+    # Source: bases/dm-nkp-workload-1.yaml
+    # Cluster UUID: 019afb99-7556-7c79-b02b-f66b91c8f57a
+
+    - name: dm-nkp-workload-1
+      namespace: dm-dev-workspace
+      type: workload
+      nkp-topology-class: nkp-nutanix-v2.17.0-rc.1
+      kubernetes-version: v1.34.1
+
+      networking:
+        pod-cidr: 192.168.0.0/16
+        service-cidr: 10.96.0.0/12
+        cni: Cilium
+        kube-proxy: disabled
+
+        control-plane-vip: 10.23.130.62
+        control-plane-port: 6443
+        vip-provider: KubeVIP
+
+        metallb-range:
+          start: 10.23.130.71
+          end: 10.23.130.75
+
+      control-plane:
+        replicas: 1
+        boot-type: uefi
+        vcpu-sockets: 4
+        vcpus-per-socket: 1
+        total-vcpus: 4
+        memory: 16Gi
+        system-disk: 80Gi
+        image: nkp-rocky-9.6-release-1.34.1-20251126174702
+
+      workers:
+        machine-deployment: md-0
+        class: default-worker
+        min-replicas: 3
+        max-replicas: 3
+        boot-type: uefi
+        vcpu-sockets: 8
+        vcpus-per-socket: 1
+        total-vcpus: 8
+        memory: 32Gi
+        system-disk: 80Gi
+        image: nkp-rocky-9.6-release-1.34.1-20251126174702
+
+      # Total resources for dm-nkp-workload-1:
+      # Control Plane: 1 node × (4 vCPUs + 16Gi RAM + 80Gi disk)
+      # Workers: 3 nodes × (8 vCPUs + 32Gi RAM + 80Gi disk)
+      # Total: 4 nodes, 28 vCPUs, 112Gi RAM, 320Gi disk
+
+    # ============================================================
+    # dm-nkp-workload-2
+    # ============================================================
+    # Source: bases/dm-nkp-workload-2.yaml
+    # Cluster UUID: 019afba0-2a28-721d-a629-e2bad7650636
+
+    - name: dm-nkp-workload-2
+      namespace: dm-dev-workspace
+      type: workload
+      nkp-topology-class: nkp-nutanix-v2.17.0-rc.1
+      kubernetes-version: v1.34.1
+
+      networking:
+        pod-cidr: 192.168.0.0/16
+        service-cidr: 10.96.0.0/12
+        cni: Cilium
+        kube-proxy: disabled
+
+        control-plane-vip: 10.23.130.63
+        control-plane-port: 6443
+        vip-provider: KubeVIP
+
+        metallb-range:
+          start: 10.23.130.76
+          end: 10.23.130.80
+
+      control-plane:
+        replicas: 1
+        boot-type: uefi
+        vcpu-sockets: 4
+        vcpus-per-socket: 1
+        total-vcpus: 4
+        memory: 16Gi
+        system-disk: 80Gi
+        image: nkp-rocky-9.6-release-1.34.1-20251126174702
+
+      workers:
+        machine-deployment: md-0
+        class: default-worker
+        min-replicas: 3
+        max-replicas: 3
+        boot-type: uefi
+        vcpu-sockets: 8
+        vcpus-per-socket: 1
+        total-vcpus: 8
+        memory: 32Gi
+        system-disk: 80Gi
+        image: nkp-rocky-9.6-release-1.34.1-20251126174702
+
+      # Total resources for dm-nkp-workload-2:
+      # Control Plane: 1 node × (4 vCPUs + 16Gi RAM + 80Gi disk)
+      # Workers: 3 nodes × (8 vCPUs + 32Gi RAM + 80Gi disk)
+      # Total: 4 nodes, 28 vCPUs, 112Gi RAM, 320Gi disk
+
+---
+# Resource Summary
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nutanix-pe-ncn-dev-sandbox-resource-summary
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: nutanix
+    infrastructure.gitops/component: resource-summary
+data:
+  summary: |
+    ╔════════════════════════════════════════════════════════════════════╗
+    ║          PE CLUSTER: ncn-dev-sandbox - RESOURCE SUMMARY           ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║                                                                    ║
+    ║  KUBERNETES CLUSTERS HOSTED:                                       ║
+    ║  ┌──────────────────┬──────────┬───────┬────────┬────────────────┐║
+    ║  │ Cluster          │ Type     │ Nodes │ vCPUs  │ Memory         │║
+    ║  ├──────────────────┼──────────┼───────┼────────┼────────────────┤║
+    ║  │ dm-nkp-workload-1│ workload │ 4     │ 28     │ 112Gi          │║
+    ║  │ dm-nkp-workload-2│ workload │ 4     │ 28     │ 112Gi          │║
+    ║  ├──────────────────┼──────────┼───────┼────────┼────────────────┤║
+    ║  │ TOTAL            │          │ 8     │ 56     │ 224Gi          │║
+    ║  └──────────────────┴──────────┴───────┴────────┴────────────────┘║
+    ║                                                                    ║
+    ║  STORAGE:                                                          ║
+    ║  - Container: default-container-92034737804854                     ║
+    ║  - Type: NutanixVolumes                                           ║
+    ║  - Allocated Disk: 640Gi (320Gi per cluster)                      ║
+    ║                                                                    ║
+    ║  NETWORKING:                                                       ║
+    ║  - Subnet: vlan173                                                 ║
+    ║  - Control Plane VIPs: 10.23.130.62, 10.23.130.63                 ║
+    ║  - MetalLB IPs: 10.23.130.71-80 (10 IPs total)                    ║
+    ║                                                                    ║
+    ║  COMMON CONFIGURATION:                                             ║
+    ║  - NKP Topology Class: nkp-nutanix-v2.17.0-rc.1                   ║
+    ║  - Kubernetes Version: v1.34.1                                    ║
+    ║  - OS Image: nkp-rocky-9.6-release-1.34.1-20251126174702          ║
+    ║  - CNI: Cilium                                                     ║
+    ║  - VIP Provider: KubeVIP                                          ║
+    ║  - Load Balancer: MetalLB                                          ║
+    ║                                                                    ║
+    ╚════════════════════════════════════════════════════════════════════╝
+
+  # Cross-reference to cluster definitions
+  cluster-definitions: |
+    dm-nkp-workload-1: management-cluster/workspaces/dm-dev-workspace/clusters/nutanix-infra/bases/dm-nkp-workload-1.yaml
+    dm-nkp-workload-2: management-cluster/workspaces/dm-dev-workspace/clusters/nutanix-infra/bases/dm-nkp-workload-2.yaml

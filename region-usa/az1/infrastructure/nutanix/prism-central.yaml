@@ -1,0 +1,90 @@
+# Nutanix Prism Central Configuration for AZ1
+# This file contains non-sensitive metadata about the Prism Central instance
+# NOTE: Credentials are managed via sealed-secrets, NOT stored here
+#
+# Source: Extracted from cluster templates in:
+#   management-cluster/workspaces/dm-dev-workspace/clusters/nutanix-infra/bases/
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nutanix-prism-central-config
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: nutanix
+    infrastructure.gitops/component: prism-central
+    infrastructure.gitops/region: usa
+    infrastructure.gitops/az: az1
+data:
+  # Prism Central endpoint (from cluster templates)
+  # Reference: spec.topology.variables[].value.nutanix.prismCentralEndpoint.url
+  pc-endpoint: "pc.dev.nkp.sh"
+  pc-port: "9440"
+  pc-url: "https://pc.dev.nkp.sh:9440"
+
+  # Environment identifier
+  environment: "dev"
+
+  # Prism Element clusters managed by this PC
+  pe-clusters: |
+    - name: ncn-dev-sandbox
+      purpose: kubernetes-workloads
+
+  # Network configuration (from cluster templates)
+  # Reference: spec.topology.variables[].value.controlPlane.nutanix.machineDetails.subnets
+  default-subnet-name: "vlan173"
+
+  # Storage configuration (from cluster templates)
+  # Reference: spec.topology.variables[].value.addons.csi.providers.nutanix.storageClassConfigs.volume.parameters.storageContainer
+  default-storage-container: "default-container-92034737804854"
+
+  # VM Image (from cluster templates)
+  # Reference: spec.topology.variables[].value.controlPlane.nutanix.machineDetails.image.name
+  default-vm-image: "nkp-rocky-9.6-release-1.34.1-20251126174702"
+
+---
+# IP Address Allocations for AZ1
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nutanix-ip-allocations-az1
+  namespace: dm-nkp-gitops
+  labels:
+    infrastructure.gitops/type: nutanix
+    infrastructure.gitops/component: ip-allocation
+data:
+  # Control Plane VIPs (from cluster templates)
+  # Reference: spec.topology.variables[].value.nutanix.controlPlaneEndpoint.host
+  control-plane-vips: |
+    # Management cluster
+    # dm-nkp-mgmt-1: <check management cluster config>
+
+    # Workload clusters
+    dm-nkp-workload-1: 10.23.130.62
+    dm-nkp-workload-2: 10.23.130.63
+
+  # MetalLB Load Balancer IP Ranges (from cluster templates)
+  # Reference: spec.topology.variables[].value.addons.serviceLoadBalancer.configuration.addressRanges
+  metallb-ranges: |
+    dm-nkp-workload-1:
+      start: 10.23.130.71
+      end: 10.23.130.75
+      count: 5
+    dm-nkp-workload-2:
+      start: 10.23.130.76
+      end: 10.23.130.80
+      count: 5
+
+  # Summary of IP usage on vlan173 subnet
+  ip-usage-summary: |
+    Network: vlan173 (10.23.130.0/24 assumed)
+
+    Control Plane VIPs:
+      - 10.23.130.62 (dm-nkp-workload-1)
+      - 10.23.130.63 (dm-nkp-workload-2)
+
+    MetalLB Ranges:
+      - 10.23.130.71-75 (dm-nkp-workload-1, 5 IPs)
+      - 10.23.130.76-80 (dm-nkp-workload-2, 5 IPs)
+
+    Reserved/Available: TBD
