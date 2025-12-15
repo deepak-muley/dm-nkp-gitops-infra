@@ -17,49 +17,16 @@ spec:
     # Subjects that are allowed to have cluster-admin
     # Customize this list for your organization
     allowedSubjects:
-      # =========================================
-      # Kubernetes System Components
-      # =========================================
+      # System components
       - kind: User
         name: "system:admin"
       - kind: User
         name: "system:kube-controller-manager"
       - kind: User
         name: "system:kube-scheduler"
+      # Service accounts (add your admin SAs here)
+      - kind: ServiceAccount
+        name: "cluster-admin"
+      # Groups (add admin groups from your IdP)
       - kind: Group
         name: "system:masters"
-      - kind: Group
-        name: "kubeadm:cluster-admins"
-
-      # =========================================
-      # NKP Platform Components
-      # =========================================
-      # Velero - Backup and restore (needs full access)
-      - kind: ServiceAccount
-        name: "velero-server"
-      # Kommander - Cluster management
-      - kind: ServiceAccount
-        name: "kommander-self-attach"
-      - kind: ServiceAccount
-        name: "kommander-crd-webhook-patch"
-      - kind: ServiceAccount
-        name: "kommander-appmanagement-crd-webhook-patch"
-
-      # =========================================
-      # Flux GitOps Controllers
-      # =========================================
-      # Flux needs cluster-admin to deploy any resource from Git
-      - kind: ServiceAccount
-        name: "kustomize-controller"
-      - kind: ServiceAccount
-        name: "helm-controller"
-
-      # =========================================
-      # Organization Admin Users/Groups
-      # =========================================
-      # Add your IdP groups or specific admin users below
-      # Example:
-      # - kind: Group
-      #   name: "platform-admins"
-      # - kind: User
-      #   name: "admin@company.com"
