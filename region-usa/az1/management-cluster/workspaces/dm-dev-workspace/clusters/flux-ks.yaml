@@ -9,9 +9,10 @@ spec:
     # Wait for sealed-secrets to create credential secrets before cluster creation
     - name: clusterops-sealed-secrets
   interval: 5s
-  path: ./region-usa/az1/management-cluster/workspaces/dm-dev-workspace/clusters/nutanix-infra
+  path: ./region-usa/az1/management-cluster/workspaces/dm-dev-workspace/clusters
   prune: true
   sourceRef:
     kind: GitRepository
     name: gitops-usa-az1
     namespace: kommander
+
