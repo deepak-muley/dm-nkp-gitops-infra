@@ -48,7 +48,8 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
         kind: KubemarkMachineTemplate
         name: dm-nkp-workload-1-kubemark-md-0
-      version: v1.34.1
+      # Note: Using v1.30.0 because Kubemark image v1.34.1 doesn't exist in quay.io registry
+      version: v1.30.0
 ---
 # KubemarkMachineTemplate - defines the hollow node configuration
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
