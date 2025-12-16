@@ -48,8 +48,10 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
         kind: KubemarkMachineTemplate
         name: dm-nkp-workload-2-kubemark-md-0
-      # Note: Using v1.30.0 because Kubemark image v1.34.1 doesn't exist in quay.io registry
-      version: v1.30.0
+      # TODO: Build and push kubemark:v1.34.1 image to your registry
+      # The public quay.io/cluster-api-provider-kubemark/kubemark:v1.34.1 doesn't exist
+      # CAPI enforces version skew policy - worker version must match control plane version
+      version: v1.34.1
 ---
 # KubemarkMachineTemplate - defines the hollow node configuration
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
