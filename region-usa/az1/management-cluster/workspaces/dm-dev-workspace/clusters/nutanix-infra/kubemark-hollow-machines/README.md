@@ -60,16 +60,7 @@ Download CAPK components and add them to GitOps:
 ## Directory Structure
 
 ```
-kubemark-infra/
-├── capk-provider/          # CAPK provider installation
-│   ├── namespace.yaml      # capk-system namespace
-│   └── kustomization.yaml
-├── bases/                  # Kubemark cluster templates
-│   ├── kubemark-cluster.yaml
-│   └── kustomization.yaml
-├── flux-ks.yaml           # Flux Kustomizations
-├── kustomization.yaml
-└── README.md
+
 ```
 
 ## How Kubemark Works
@@ -128,7 +119,7 @@ kubectl get pods -n capk-system
 
 The cluster will be created automatically by Flux once:
 1. CAPK provider is installed
-2. The kubemark-infra is added to the clusters kustomization
+2. The kubemark-hollow-machines is added to the clusters kustomization
 
 ### Step 3: Verify Cluster Creation
 

@@ -26,7 +26,6 @@ management-cluster/
         │   ├── gke-infra/          # GCP GKE clusters (placeholder)
         │   ├── eks-a-infra/        # AWS EKS Anywhere (placeholder)
         │   ├── openshift-infra/    # OpenShift clusters (placeholder)
-        │   ├── kubemark-infra/     # Kubemark clusters (placeholder)
         │   └── docker-infra/       # Docker/Kind clusters (placeholder)
         ├── projects/
         ├── rbac/

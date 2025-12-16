@@ -101,7 +101,6 @@ kubectl apply -f https://raw.githubusercontent.com/deepak-muley/dm-nkp-gitops-in
 │       │           │   ├── gke-infra/             # GCP GKE clusters (placeholder)
 │       │           │   ├── eks-a-infra/           # AWS EKS Anywhere clusters (placeholder)
 │       │           │   ├── openshift-infra/       # OpenShift clusters (placeholder)
-│       │           │   ├── kubemark-infra/        # Kubemark clusters (placeholder)
 │       │           │   └── docker-infra/          # Docker/Kind clusters (placeholder)
 │       │           ├── projects/
 │       │           │   └── dm-dev-project/

@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - ../../bases/dm-nkp-workload-1.yaml
   - ../../bases/dm-nkp-workload-2.yaml
+  - ../../kubemark-hollow-machines
   # Sealed secrets are now applied via separate clusterops-sealed-secrets kustomization
 
 patches:

@@ -61,7 +61,7 @@ This runs `clusterctl init --infrastructure kubemark` on your management cluster
 ./scripts/bootstrap-capk.sh --generate-manifests
 
 # This creates:
-# region-usa/az1/management-cluster/workspaces/dm-dev-workspace/clusters/kubemark-infra/capk-provider/capk-components.yaml
+# region-usa/az1/management-cluster/workspaces/dm-dev-workspace/clusters/nutanix-infra/kubemark-hollow-machines/capk-components.yaml
 
 # Then uncomment capk-components.yaml in the kustomization.yaml and push to git
 ```
@@ -72,7 +72,7 @@ Once CAPK is installed, enable Kubemark cluster creation:
 
 1. Edit `clusters/kustomization.yaml` and uncomment:
    ```yaml
-   - kubemark-infra
+   - kubemark-hollow-machines
    ```
 
 2. Commit and push to git

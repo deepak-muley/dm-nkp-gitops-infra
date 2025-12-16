@@ -37,7 +37,7 @@ KUBECONFIG_WORKLOAD2="/Users/deepak.muley/ws/nkp/dm-nkp-workload-2.kubeconfig"
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-CAPK_MANIFESTS_DIR="${REPO_ROOT}/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/clusters/kubemark-infra/capk-provider"
+CAPK_MANIFESTS_DIR="${REPO_ROOT}/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/clusters/nutanix-infra/kubemark-hollow-machines"
 
 # CAPK version and URLs
 CAPK_VERSION="v0.10.0"
@@ -374,8 +374,8 @@ install_capk() {
 
     echo ""
     echo -e "${BOLD}Next steps:${NC}"
-    echo "  1. Enable kubemark-infra in clusters/kustomization.yaml:"
-    echo "     Uncomment: # - kubemark-infra"
+    echo "  1. Enable kubemark-hollow-machines in clusters/kustomization.yaml:"
+    echo "     Uncomment: # - kubemark-hollow-machines"
     echo ""
     echo "  2. Commit and push to git"
     echo ""
