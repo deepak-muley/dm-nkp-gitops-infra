@@ -13,7 +13,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/topology/class
-        value: nkp-nutanix-v2.17.0-rc.4
+        value: nkp-nutanix-v2.17.0-rc.6
       - op: add
         path: /spec/topology/workers/machineDeployments/0/replicas
         value: 3
@@ -29,7 +29,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/topology/class
-        value: nkp-nutanix-v2.17.0-rc.4
+        value: nkp-nutanix-v2.17.0-rc.6
       - op: add
         path: /spec/topology/workers/machineDeployments/0/replicas
         value: 3
