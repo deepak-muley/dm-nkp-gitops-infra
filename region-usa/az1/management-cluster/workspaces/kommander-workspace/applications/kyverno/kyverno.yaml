@@ -13,4 +13,4 @@ spec:
   # Use host cluster selector to target management cluster
   clusterSelector:
     matchLabels:
-      kommander.d2iq.io/host-cluster: "true"
+      kommander.d2iq.io/host: "true"
