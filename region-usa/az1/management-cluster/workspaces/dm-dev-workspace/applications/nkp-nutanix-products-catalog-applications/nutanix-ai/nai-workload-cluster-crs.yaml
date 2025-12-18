@@ -1,0 +1,67 @@
+# ClusterResourceSet to deploy NAI Image Pull Secret to all workload clusters
+# This should be applied BEFORE enabling the NAI app
+#
+# NOTE: The SealedSecret below requires all target clusters to have the same
+# sealed-secrets controller private key.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nai-image-pull-secret-resources
+  namespace: dm-dev-workspace
+  labels:
+    app.kubernetes.io/part-of: nutanix-ai
+    app.kubernetes.io/component: cluster-resource-set
+data:
+  # Namespace for NAI/Nutanix AI applications
+  namespace.yaml: |
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: nai-system
+      labels:
+        app.kubernetes.io/part-of: nutanix-ai
+
+  # SealedSecret for NAI image registry credentials
+  # This sealed secret uses cluster-wide scope so it can be used from any namespace
+  sealed-secret.yaml: |
+    apiVersion: bitnami.com/v1alpha1
+    kind: SealedSecret
+    metadata:
+      annotations:
+        sealedsecrets.bitnami.com/cluster-wide: "true"
+      name: nai-image-pull-secret
+      namespace: nai-system
+    spec:
+      encryptedData:
+        # TODO: Replace with actual NAI image pull secret encrypted data
+        # Use: kubeseal --controller-namespace sealed-secrets-system --format yaml --scope cluster-wide
+        .dockerconfigjson: REPLACE_WITH_ACTUAL_ENCRYPTED_DATA
+      template:
+        metadata:
+          annotations:
+            sealedsecrets.bitnami.com/cluster-wide: "true"
+          name: nai-image-pull-secret
+          namespace: nai-system
+        type: kubernetes.io/dockerconfigjson
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  name: nai-image-pull-secret-crs
+  namespace: dm-dev-workspace
+  labels:
+    app.kubernetes.io/part-of: nutanix-ai
+    app.kubernetes.io/component: cluster-resource-set
+spec:
+  # Select all Nutanix-based clusters in this namespace
+  clusterSelector:
+    matchLabels:
+      konvoy.d2iq.io/provider: nutanix
+  # Resources to deploy to matching clusters
+  resources:
+    - kind: ConfigMap
+      name: nai-image-pull-secret-resources
+  # ApplyOnce means resources are applied once when cluster matches
+  strategy: ApplyOnce
+

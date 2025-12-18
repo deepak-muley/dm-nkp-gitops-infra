@@ -1,0 +1,65 @@
+# ClusterResourceSet to deploy NDK Image Pull Secret to all workload clusters
+# This should be applied BEFORE enabling the NDK app
+#
+# NOTE: The SealedSecret below requires all target clusters to have the same
+# sealed-secrets controller private key.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ndk-image-pull-secret-resources
+  namespace: dm-dev-workspace
+  labels:
+    app.kubernetes.io/part-of: ndk
+    app.kubernetes.io/component: cluster-resource-set
+data:
+  # Namespace for NDK/Nutanix applications
+  namespace.yaml: |
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ntnx-system
+      labels:
+        app.kubernetes.io/part-of: nutanix
+
+  # SealedSecret for NDK image registry credentials
+  # This sealed secret uses cluster-wide scope so it can be used from any namespace
+  sealed-secret.yaml: |
+    apiVersion: bitnami.com/v1alpha1
+    kind: SealedSecret
+    metadata:
+      annotations:
+        sealedsecrets.bitnami.com/cluster-wide: "true"
+      name: ndk-image-pull-secret
+      namespace: ntnx-system
+    spec:
+      encryptedData:
+        .dockerconfigjson: AgCiKhOJpOJ1nTNyPgtQQhI+sUi6/QTwF1C7BgMfOTeMHYqVHinc/18wOm3NJtT5fXWyuidzZVPBbx2FliJdPC0F7QXnFfibpCFhuVEFYwdpcYHfTMt4civEW1fCs9jOpmX0AHwNGZk65b/OGJQJ3QeS3sraYih8my8xXbG+zs8efw2l3eq9lyx8y5CB23FXzt8YYH85bVk5dhUZ33CGkwopzFYrOr4upY/sO0PqcOh1Chu+OFVA3UhaJOvlT8dKCdCY7MFjTlSSI6mSDqhsN7zpLS2NDmB2sq2m0hroZUl6k7pw02AFxanzHHDtvK+xXAGdb5NID7XYFi+IHNp+hK03v7qD9G2RBHcKOaVKsAlcsOiVsf2P5uBgeeM2pk1jWCKBqYuUZcmqZgdLiSiDlSX1DZhlBVeJVXK4Hn49f6WQJ/ciB56CRg4hClA2IN+q0RPa8D6w+97neh4zcy6xWIZZZ8sLExhlq4dKFjsZM1Xm4fVXCuegK5UoqNgVgXChC2jd54aDWfm7jjA6cDMahuNf1Hizz7QSm5hlKMrhX/jiHRMFeGwXMnDaW1bIgO48pwZ9PyimKWZe4822834zAbzToW1hplR4H0VIQwMteNdhb+yQrVXY9Ty45DbQpmThu5GDKJ+dkPUtGREWVZ1sXu8f4Il2ZXL8Vb8vPkE7FrwOPv5Tqc23qb2d2ARPpLtkKeuH3jy0SUJFbZbyOVSJJaipyePKu8uG15zUuLQf56SoRJPGBGbbRqdt8Tm1uiiO+/1HmBuoI47rNyE6Oyw/AxSGr7jskjEMnDmbZFS9SL9mmVf/CTldiUAcdYvA2/yE47rHYPdO5PxYl6ISSdmVz0Dka9wpqQiyZUVjLm5v4W0lSDQDC6GxBCSLkBKrmMJU1/DwS7KgbOYnirDXFH2xWdlUBbteANKfjKvAU9ugDCvG4jrFd4jeLO0RaaP/k7xXZTXQqu5k3Kwn
+      template:
+        metadata:
+          annotations:
+            sealedsecrets.bitnami.com/cluster-wide: "true"
+          name: ndk-image-pull-secret
+          namespace: ntnx-system
+        type: kubernetes.io/dockerconfigjson
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  name: ndk-image-pull-secret-crs
+  namespace: dm-dev-workspace
+  labels:
+    app.kubernetes.io/part-of: ndk
+    app.kubernetes.io/component: cluster-resource-set
+spec:
+  # Select all Nutanix-based clusters in this namespace
+  clusterSelector:
+    matchLabels:
+      konvoy.d2iq.io/provider: nutanix
+  # Resources to deploy to matching clusters
+  resources:
+    - kind: ConfigMap
+      name: ndk-image-pull-secret-resources
+  # ApplyOnce means resources are applied once when cluster matches
+  strategy: ApplyOnce
+

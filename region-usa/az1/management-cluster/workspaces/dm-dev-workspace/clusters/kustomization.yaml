@@ -6,3 +6,7 @@ resources:
 
   # Docker Infrastructure Clusters (CAPD + Kubemark)
   - docker-infra
+
+  # NOTE: ClusterResourceSets for NDK/NAI are now in their respective app folders:
+  # - applications/nkp-nutanix-products-catalog-applications/ndk/
+  # - applications/nkp-nutanix-products-catalog-applications/nutanix-ai/

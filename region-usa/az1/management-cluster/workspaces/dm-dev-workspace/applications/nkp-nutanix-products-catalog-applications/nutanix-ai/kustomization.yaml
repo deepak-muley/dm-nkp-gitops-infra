@@ -1,7 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-- nutanix-ai.yaml
-- nutanix-ai-config-overrides.yaml
-- nutanix-ai-image-pull-sealed-secret.yaml
-
+  # ClusterResourceSet to deploy NAI secrets to workload clusters (apply first)
+  - nai-workload-cluster-crs.yaml
+  # NAI App Deployment
+  - nutanix-ai.yaml
+  - nutanix-ai-config-overrides.yaml
+  # Sealed secret for management cluster (dm-dev-workspace)
+  - nutanix-ai-image-pull-sealed-secret.yaml

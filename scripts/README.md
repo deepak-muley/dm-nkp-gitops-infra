@@ -7,9 +7,101 @@ Utility scripts for managing the NKP GitOps infrastructure.
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | `bootstrap-capk.sh` | Install CAPK for Kubemark clusters | `./scripts/bootstrap-capk.sh mgmt` |
+| `bootstrap-sealed-secrets-key-crs.sh` | Deploy sealed-secrets key via ClusterResourceSet | `./scripts/bootstrap-sealed-secrets-key-crs.sh` |
 | `check-cluster-health.sh` | Check health of all NKP clusters | `./scripts/check-cluster-health.sh` |
 | `check-violations.sh` | Check Gatekeeper policy violations | `./scripts/check-violations.sh mgmt` |
 | `migrate-to-new-structure.sh` | Migrate repo structure safely | `./scripts/migrate-to-new-structure.sh` |
+
+---
+
+## bootstrap-sealed-secrets-key-crs.sh
+
+Create a ClusterResourceSet to automatically deploy the sealed-secrets private key to all workload clusters.
+
+### Why Is This Needed?
+
+For SealedSecrets to work across multiple clusters, all clusters must share the same private key. This script:
+
+1. **Reads** the sealed-secrets private key from a local file (NEVER stored in git!)
+2. **Creates** a Kubernetes Secret in the management cluster containing the key
+3. **Creates** a ClusterResourceSet that deploys the key to all matching workload clusters
+
+### Security
+
+⚠️ **IMPORTANT**: The private key is NEVER stored in git. The script reads it from:
+```
+/Users/deepak.muley/ws/nkp/sealed-secrets-key-backup.yaml
+```
+
+This location is protected by `.gitignore` patterns to prevent accidental commits.
+
+### Usage
+
+```bash
+# Apply to management cluster (uses default kubeconfig context)
+./scripts/bootstrap-sealed-secrets-key-crs.sh
+
+# Specify management cluster kubeconfig
+./scripts/bootstrap-sealed-secrets-key-crs.sh -k /Users/deepak.muley/ws/nkp/dm-nkp-mgmt-1.conf
+
+# Dry run (show what would be created without applying)
+./scripts/bootstrap-sealed-secrets-key-crs.sh --dry-run
+
+# Use a different key file location
+./scripts/bootstrap-sealed-secrets-key-crs.sh -f /path/to/my-sealed-secrets-key.yaml
+
+# Cleanup (remove the ClusterResourceSet and Secret)
+./scripts/bootstrap-sealed-secrets-key-crs.sh --cleanup
+
+# Help
+./scripts/bootstrap-sealed-secrets-key-crs.sh --help
+```
+
+### Command Options
+
+| Option | Description |
+|--------|-------------|
+| `-k, --kubeconfig PATH` | Path to kubeconfig file |
+| `-f, --key-file PATH` | Path to sealed-secrets key backup (default: `/Users/deepak.muley/ws/nkp/sealed-secrets-key-backup.yaml`) |
+| `-n, --namespace NS` | Namespace for ClusterResourceSet (default: `dm-dev-workspace`) |
+| `-d, --dry-run` | Show what would be created without applying |
+| `-c, --cleanup` | Remove the ClusterResourceSet and Secret |
+| `-h, --help` | Show help message |
+
+### What Gets Created
+
+The script creates two resources in the management cluster:
+
+1. **Secret** (`sealed-secrets-key-resources`): Contains the sealed-secrets private key as YAML data
+2. **ClusterResourceSet** (`sealed-secrets-key-crs`): Deploys the Secret content to matching clusters
+
+### Cluster Selector
+
+The ClusterResourceSet selects clusters with label:
+```yaml
+matchLabels:
+  konvoy.d2iq.io/provider: nutanix
+```
+
+This automatically targets all Nutanix workload clusters.
+
+### Verifying Deployment
+
+After running the script:
+
+```bash
+# Check ClusterResourceSet status
+kubectl --kubeconfig=/Users/deepak.muley/ws/nkp/dm-nkp-mgmt-1.conf \
+  get clusterresourceset -n dm-dev-workspace
+
+# Check ClusterResourceSetBindings (one per matching cluster)
+kubectl --kubeconfig=/Users/deepak.muley/ws/nkp/dm-nkp-mgmt-1.conf \
+  get clusterresourcesetbinding -n dm-dev-workspace
+
+# Verify key was deployed to a workload cluster
+kubectl --kubeconfig=/Users/deepak.muley/ws/nkp/dm-nkp-workload-1.kubeconfig \
+  get secrets -n sealed-secrets-system -l sealedsecrets.bitnami.com/sealed-secrets-key
+```
 
 ---
 

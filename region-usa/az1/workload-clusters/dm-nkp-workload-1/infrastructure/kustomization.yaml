@@ -7,8 +7,11 @@ kind: Kustomization
 resources:
   # Base infrastructure (includes sealed-secrets-controller)
   - ../../_base/infrastructure/
-  # Cluster-specific sealed secrets (NDK image pull secret, etc.)
-  - sealed-secrets/
+
+# NOTE: NDK image pull secrets are now deployed via ClusterResourceSet
+# from the management cluster. See:
+# region-usa/az1/management-cluster/workspaces/dm-dev-workspace/clusters/cluster-resource-sets/
+
 # Add infrastructure components as needed, e.g.:
 #   - cert-manager/
 #   - ingress-nginx/

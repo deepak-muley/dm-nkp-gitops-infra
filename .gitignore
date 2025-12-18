@@ -1,3 +1,43 @@
 # Local-only files (not tracked in Git)
 region-usa/az1/_common/policies/gatekeeper/VIOLATIONS-REPORT.md
 region-usa/az1/_common/policies/gatekeeper/SECURITY-ROADMAP.md
+
+# =============================================================================
+# SECURITY: Private keys and sensitive data - NEVER commit these!
+# =============================================================================
+
+# Sealed-secrets private keys
+**/sealed-secrets-key*.yaml
+**/sealed-secrets-key*.yml
+**/*-sealed-secrets-key.yaml
+**/*-sealed-secrets-key.yml
+
+# Generic private key patterns (allow public keys)
+**/*.key
+**/private*.pem
+**/*-private-key.pem
+**/private-key*.yaml
+**/private-key*.yml
+# Note: Public keys (*-public-key.pem) are safe to commit
+
+# Kubeconfig files (may contain sensitive credentials)
+**/*.kubeconfig
+**/*.conf
+!**/kustomization.yaml
+
+# Backup files that might contain secrets
+**/*-backup.yaml
+**/*-backup.yml
+**/*.backup
+
+# Decrypted secrets (should never be committed)
+**/*-decrypted.yaml
+**/*-decrypted.yml
+**/decrypted-*.yaml
+**/decrypted-*.yml
+
+# Temporary secret files
+**/.secrets/
+**/secrets-local/
+**/*.secret.yaml
+**/*.secret.yml
