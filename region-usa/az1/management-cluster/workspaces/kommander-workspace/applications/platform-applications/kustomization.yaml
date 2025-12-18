@@ -6,7 +6,4 @@ resources:
   - cloudnative-pg
   # NKP Insights (depends on prometheus and cloudnative-pg)
   - nkp-insights
-  # DISABLED: rook-ceph
-  # - rook-ceph
-  # DISABLED: rook-ceph-cluster
-  # - rook-ceph-cluster
+

@@ -3,4 +3,6 @@ kind: Kustomization
 resources:
   # Applications from dm-nkp-gitops-app-catalog for management cluster
   - kyverno
+  # Platform applications for management cluster
+  - platform-applications
 

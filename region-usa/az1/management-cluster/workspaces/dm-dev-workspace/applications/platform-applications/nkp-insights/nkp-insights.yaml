@@ -1,7 +1,7 @@
 apiVersion: apps.kommander.d2iq.io/v1alpha3
 kind: AppDeployment
 metadata:
-  name: kube-prometheus-stack
+  name: nkp-insights
   namespace: dm-dev-workspace
   annotations:
     kustomize.toolkit.fluxcd.io/ssa: merge
@@ -9,7 +9,7 @@ metadata:
 spec:
   appRef:
     kind: ClusterApp
-    name: kube-prometheus-stack-34.9.3
+    name: nkp-insights-1.7.3
   clusterSelector:
     matchExpressions:
       - key: kommander.d2iq.io/cluster-name
@@ -17,5 +17,4 @@ spec:
         values:
           - dm-nkp-workload-1
           - dm-nkp-workload-2
-  configOverrides:
-    name: kube-prometheus-stack-config-overrides
+

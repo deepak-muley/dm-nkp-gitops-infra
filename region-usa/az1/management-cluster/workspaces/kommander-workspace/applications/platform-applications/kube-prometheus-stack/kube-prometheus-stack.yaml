@@ -2,7 +2,7 @@ apiVersion: apps.kommander.d2iq.io/v1alpha3
 kind: AppDeployment
 metadata:
   name: kube-prometheus-stack
-  namespace: dm-dev-workspace
+  namespace: kommander
   annotations:
     kustomize.toolkit.fluxcd.io/ssa: merge
     kustomize.toolkit.fluxcd.io/prune: disabled
@@ -10,12 +10,8 @@ spec:
   appRef:
     kind: ClusterApp
     name: kube-prometheus-stack-34.9.3
+  # Use host cluster selector to target management cluster
   clusterSelector:
-    matchExpressions:
-      - key: kommander.d2iq.io/cluster-name
-        operator: In
-        values:
-          - dm-nkp-workload-1
-          - dm-nkp-workload-2
-  configOverrides:
-    name: kube-prometheus-stack-config-overrides
+    matchLabels:
+      kommander.d2iq.io/host: "true"
+

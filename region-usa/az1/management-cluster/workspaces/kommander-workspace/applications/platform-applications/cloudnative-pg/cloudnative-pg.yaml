@@ -1,0 +1,17 @@
+apiVersion: apps.kommander.d2iq.io/v1alpha3
+kind: AppDeployment
+metadata:
+  name: cloudnative-pg
+  namespace: kommander
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: merge
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  appRef:
+    kind: ClusterApp
+    name: cloudnative-pg-1.28.0
+  # Use host cluster selector to target management cluster
+  clusterSelector:
+    matchLabels:
+      kommander.d2iq.io/host: "true"
+
