@@ -172,11 +172,17 @@ if verify_user_exists "$WS_ADMIN_KUBECONFIG" "dm-dev-workspace-admin"; then
     test_permission "$WS_ADMIN_KUBECONFIG" "Get namespaces (all)" "no" "namespaces" "get"
     test_permission "$WS_ADMIN_KUBECONFIG" "Create namespaces" "no" "namespaces" "create"
 
-    print_subheader "Other Workspaces - SHOULD NOT HAVE"
+    print_subheader "Workspaces & Projects (Global) - SHOULD NOT HAVE"
+    test_permission "$WS_ADMIN_KUBECONFIG" "Get workspaces (global)" "no" "workspaces.workspaces.kommander.mesosphere.io" "get"
     test_permission "$WS_ADMIN_KUBECONFIG" "List workspaces (global)" "no" "workspaces.workspaces.kommander.mesosphere.io" "list"
     test_permission "$WS_ADMIN_KUBECONFIG" "Create workspaces (global)" "no" "workspaces.workspaces.kommander.mesosphere.io" "create"
     test_permission "$WS_ADMIN_KUBECONFIG" "Delete workspaces (global)" "no" "workspaces.workspaces.kommander.mesosphere.io" "delete"
+    test_permission "$WS_ADMIN_KUBECONFIG" "Get projects (all namespaces)" "no" "projects.workspaces.kommander.mesosphere.io" "get"
+    test_permission "$WS_ADMIN_KUBECONFIG" "List projects (all namespaces)" "no" "projects.workspaces.kommander.mesosphere.io" "list"
+
+    print_subheader "Other Workspaces - SHOULD NOT HAVE"
     test_permission "$WS_ADMIN_KUBECONFIG" "Get workspaceroles (kommander)" "no" "workspaceroles.workspaces.kommander.mesosphere.io" "get" "kommander"
+    test_permission "$WS_ADMIN_KUBECONFIG" "Get projects (kommander)" "no" "projects.workspaces.kommander.mesosphere.io" "get" "kommander"
     test_permission "$WS_ADMIN_KUBECONFIG" "Get pods (kommander)" "no" "pods" "get" "kommander"
     test_permission "$WS_ADMIN_KUBECONFIG" "Get pods (kommander-default-ws)" "no" "pods" "get" "kommander-default-workspace"
 
@@ -214,16 +220,20 @@ if verify_user_exists "$PROJ_ADMIN_KUBECONFIG" "dm-dev-project-admin"; then
     test_permission "$PROJ_ADMIN_KUBECONFIG" "Get namespaces (all)" "no" "namespaces" "get"
     test_permission "$PROJ_ADMIN_KUBECONFIG" "Create namespaces" "no" "namespaces" "create"
 
-    print_subheader "Workspaces - SHOULD NOT HAVE"
+    print_subheader "Workspaces & Projects (Global) - SHOULD NOT HAVE"
+    test_permission "$PROJ_ADMIN_KUBECONFIG" "Get workspaces (global)" "no" "workspaces.workspaces.kommander.mesosphere.io" "get"
     test_permission "$PROJ_ADMIN_KUBECONFIG" "List workspaces (global)" "no" "workspaces.workspaces.kommander.mesosphere.io" "list"
     test_permission "$PROJ_ADMIN_KUBECONFIG" "Create workspaces" "no" "workspaces.workspaces.kommander.mesosphere.io" "create"
-    test_permission "$PROJ_ADMIN_KUBECONFIG" "Get workspaceroles (dm-dev-workspace)" "no" "workspaceroles.workspaces.kommander.mesosphere.io" "get" "dm-dev-workspace"
+    test_permission "$PROJ_ADMIN_KUBECONFIG" "Get projects (all namespaces)" "no" "projects.workspaces.kommander.mesosphere.io" "get"
+    test_permission "$PROJ_ADMIN_KUBECONFIG" "List projects (all namespaces)" "no" "projects.workspaces.kommander.mesosphere.io" "list"
 
     print_subheader "Parent Workspace (dm-dev-workspace) - SHOULD NOT HAVE"
-    test_permission "$PROJ_ADMIN_KUBECONFIG" "Get pods (dm-dev-workspace)" "no" "pods" "get" "dm-dev-workspace"
-    test_permission "$PROJ_ADMIN_KUBECONFIG" "Get secrets (dm-dev-workspace)" "no" "secrets" "get" "dm-dev-workspace"
+    test_permission "$PROJ_ADMIN_KUBECONFIG" "Get workspaceroles (dm-dev-workspace)" "no" "workspaceroles.workspaces.kommander.mesosphere.io" "get" "dm-dev-workspace"
+    test_permission "$PROJ_ADMIN_KUBECONFIG" "Get projects (dm-dev-workspace)" "no" "projects.workspaces.kommander.mesosphere.io" "get" "dm-dev-workspace"
     test_permission "$PROJ_ADMIN_KUBECONFIG" "List projects (dm-dev-workspace)" "no" "projects.workspaces.kommander.mesosphere.io" "list" "dm-dev-workspace"
     test_permission "$PROJ_ADMIN_KUBECONFIG" "Create projects (dm-dev-workspace)" "no" "projects.workspaces.kommander.mesosphere.io" "create" "dm-dev-workspace"
+    test_permission "$PROJ_ADMIN_KUBECONFIG" "Get pods (dm-dev-workspace)" "no" "pods" "get" "dm-dev-workspace"
+    test_permission "$PROJ_ADMIN_KUBECONFIG" "Get secrets (dm-dev-workspace)" "no" "secrets" "get" "dm-dev-workspace"
 
     print_subheader "Other Workspaces - SHOULD NOT HAVE"
     test_permission "$PROJ_ADMIN_KUBECONFIG" "Get pods (kommander)" "no" "pods" "get" "kommander"
