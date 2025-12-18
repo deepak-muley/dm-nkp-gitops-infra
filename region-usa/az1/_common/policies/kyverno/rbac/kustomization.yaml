@@ -1,0 +1,16 @@
+# Kyverno RBAC Security Policies
+# Reference: https://kyverno.io/policies/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Critical - Block cluster-admin bindings
+  - block-cluster-admin.yaml
+  # Critical - Block wildcard (*) in RBAC
+  - block-wildcard-rbac.yaml
+  # High - Block default ServiceAccount usage
+  - block-default-sa.yaml
+  # High - Restrict secrets access in roles
+  - restrict-secrets-access.yaml
+  # Medium - Require explicit SA token automount
+  - block-automount-sa-token.yaml
+

@@ -1,0 +1,16 @@
+# Kyverno Resource Management Policies
+# Reference: https://kyverno.io/policies/best-practices/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Critical - Require CPU/memory requests and limits
+  - required-resources.yaml
+  # High - Require standard Kubernetes labels
+  - required-labels.yaml
+  # Medium - Enforce maximum resource limits
+  - container-limits.yaml
+  # Medium - Require liveness and readiness probes
+  - required-probes.yaml
+  # Medium - Require PodDisruptionBudget for HA workloads
+  - require-pod-disruption-budget.yaml
+

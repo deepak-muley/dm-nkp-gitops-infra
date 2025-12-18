@@ -1,0 +1,96 @@
+# Require Ingress TLS
+# Reference: https://kyverno.io/policies/best-practices/require-ingress-tls/
+# HIGH: Ensures all Ingress resources use TLS
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-ingress-tls
+  annotations:
+    policies.kyverno.io/title: Require Ingress TLS
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Ingress
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      TLS should be enabled on all Ingress resources to encrypt traffic in transit.
+      This policy validates that Ingress resources have TLS configured with a
+      secret name for the certificate.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-tls-hosts
+      match:
+        any:
+          - resources:
+              kinds:
+                - Ingress
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+      validate:
+        message: >-
+          Ingress resources must use TLS. Add a spec.tls section with secretName
+          referencing a TLS certificate. Example:
+          spec:
+            tls:
+              - hosts: ["example.com"]
+                secretName: example-tls
+        pattern:
+          spec:
+            tls:
+              - hosts:
+                  - "?*"
+                secretName: "?*"
+---
+# Alternative: Require TLS annotation for cert-manager
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-ingress-https-annotation
+  annotations:
+    policies.kyverno.io/title: Require Ingress HTTPS Annotation
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Ingress
+    policies.kyverno.io/description: >-
+      For environments using cert-manager, Ingress resources should have the
+      annotation to trigger certificate generation.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-cert-annotation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Ingress
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+      validate:
+        message: >-
+          Ingress should have cert-manager annotation for automatic TLS.
+          Add: cert-manager.io/cluster-issuer: <issuer-name>
+        anyPattern:
+          - metadata:
+              annotations:
+                cert-manager.io/cluster-issuer: "?*"
+          - metadata:
+              annotations:
+                cert-manager.io/issuer: "?*"
+          # Allow if TLS is manually configured
+          - spec:
+              tls:
+                - secretName: "?*"
+

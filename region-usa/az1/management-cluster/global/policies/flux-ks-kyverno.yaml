@@ -1,0 +1,36 @@
+# Flux Kustomization for Kyverno Policies (Management Cluster)
+# References shared policies from _common/policies/kyverno
+#
+# Note: Kyverno must be installed on the cluster before these policies can be applied.
+# The Kyverno application is deployed via workspace applications.
+#
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kyverno-policies
+  namespace: kommander-flux
+spec:
+  interval: 5m
+  # Path to shared Kyverno policies
+  path: ./region-usa/az1/_common/policies/kyverno
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: gitops-usa-az1
+    namespace: kommander
+  # Wait for Kyverno to be installed
+  # Uncomment when Kyverno is deployed
+  # dependsOn:
+  #   - name: kyverno
+  #     namespace: kommander-flux
+  timeout: 2m
+  # Health checks for policies
+  healthChecks:
+    - apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      name: disallow-privileged-containers
+    - apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      name: require-requests-limits
+

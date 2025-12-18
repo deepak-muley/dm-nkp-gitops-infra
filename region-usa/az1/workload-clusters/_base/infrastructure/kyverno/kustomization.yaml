@@ -1,0 +1,15 @@
+# Workload Cluster Kyverno Policies
+# References shared policies from _common/policies/kyverno
+#
+# Note: This kustomization file enables workload clusters to use the same
+# shared Kyverno policies as the management cluster without duplication.
+#
+# Kyverno must be installed on the cluster before these policies can be applied.
+# See: https://kyverno.io/docs/installation/
+#
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Reference all shared Kyverno policies
+  - ../../../../_common/policies/kyverno/
+

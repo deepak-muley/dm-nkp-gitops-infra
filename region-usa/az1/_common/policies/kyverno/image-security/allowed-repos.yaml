@@ -1,0 +1,114 @@
+# Allowed Container Repositories
+# Reference: https://kyverno.io/policies/best-practices/restrict-image-registries/
+# CRITICAL: Whitelist of allowed container registries
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Image Registries
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Images can only come from trusted registries. This policy validates that
+      container images come from an approved list of registries. For airgapped
+      environments, update the list to include only your internal registry.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: validate-registries
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      validate:
+        message: >-
+          Container images must come from approved registries. The image '{{request.object.spec.containers[].image}}'
+          is from a registry that is not in the allowed list.
+          Allowed registries: docker.io, ghcr.io, gcr.io, registry.k8s.io, quay.io, harbor.*, registry.*
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.image }}"
+                    operator: AnyNotIn
+                    value:
+                      # Docker Hub (official and library images)
+                      - "docker.io/*"
+                      - "*/docker.io/*"
+                      # GitHub Container Registry
+                      - "ghcr.io/*"
+                      # Google Container Registry
+                      - "gcr.io/*"
+                      # Google Artifact Registry
+                      - "*-docker.pkg.dev/*"
+                      # Kubernetes official registry
+                      - "registry.k8s.io/*"
+                      # Red Hat / Quay
+                      - "quay.io/*"
+                      # AWS ECR (public and private)
+                      - "*.dkr.ecr.*.amazonaws.com/*"
+                      - "public.ecr.aws/*"
+                      # Azure Container Registry
+                      - "*.azurecr.io/*"
+                      # Harbor (common enterprise registry)
+                      - "harbor.*/*"
+                      # Nutanix container registry
+                      - "*.nutanix.com/*"
+                      # NKP specific registries
+                      - "mesosphere/*"
+                      - "d2iq/*"
+---
+# Alternative: Strict registry policy for airgapped environments
+# Uncomment and customize for your internal registry
+# apiVersion: kyverno.io/v1
+# kind: ClusterPolicy
+# metadata:
+#   name: restrict-image-registries-airgapped
+#   annotations:
+#     policies.kyverno.io/title: Restrict Image Registries (Airgapped)
+#     policies.kyverno.io/category: Best Practices
+#     policies.kyverno.io/severity: critical
+# spec:
+#   validationFailureAction: Enforce
+#   background: true
+#   rules:
+#     - name: validate-registries-airgapped
+#       match:
+#         any:
+#           - resources:
+#               kinds:
+#                 - Pod
+#       validate:
+#         message: >-
+#           In airgapped environment, images must come from internal registry only.
+#         pattern:
+#           spec:
+#             containers:
+#               - image: "harbor.internal.company.com/*"
+#             =(initContainers):
+#               - image: "harbor.internal.company.com/*"
+

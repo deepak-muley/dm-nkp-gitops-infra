@@ -1,0 +1,12 @@
+# Kyverno Multi-Tenancy Policies
+# Reference: https://kyverno.io/policies/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # High - Generate ResourceQuota and LimitRange for namespaces
+  - require-resourcequota.yaml
+  # High - Restrict namespace creation and naming
+  - restrict-namespace-creation.yaml
+  # Medium - Require pod priority class
+  - require-pod-priorityclass.yaml
+

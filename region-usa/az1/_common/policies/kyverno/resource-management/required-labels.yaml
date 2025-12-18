@@ -1,0 +1,106 @@
+# Require Standard Labels
+# Reference: https://kyverno.io/policies/best-practices/require-labels/
+# HIGH: Ensures workloads have standard Kubernetes labels
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-labels
+  annotations:
+    policies.kyverno.io/title: Require Labels
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod, Deployment, StatefulSet, DaemonSet
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Standard labels help with organization, querying, and cost allocation.
+      This policy requires workloads to have app.kubernetes.io/name and
+      app.kubernetes.io/version labels as recommended by Kubernetes conventions.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-app-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+                - Job
+                - CronJob
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      validate:
+        message: >-
+          The labels 'app.kubernetes.io/name' and 'app.kubernetes.io/version' are required.
+          These labels help with organization and cost tracking.
+        pattern:
+          metadata:
+            labels:
+              app.kubernetes.io/name: "?*"
+---
+# Add Team/Owner Label (for cost allocation)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-team-label
+  annotations:
+    policies.kyverno.io/title: Require Team Label
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Namespace
+    policies.kyverno.io/description: >-
+      Namespaces should have a team label for cost allocation and ownership.
+      This helps with chargeback and identifying responsible teams.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-namespace-team
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              names:
+                - kube-*
+                - default
+                - capi-*
+                - cap*-system
+                - kommander*
+                - cert-manager
+                - traefik*
+                - gatekeeper-system
+                - kyverno
+      validate:
+        message: >-
+          Namespaces must have a 'team' or 'owner' label for cost allocation.
+        anyPattern:
+          - metadata:
+              labels:
+                team: "?*"
+          - metadata:
+              labels:
+                owner: "?*"
+

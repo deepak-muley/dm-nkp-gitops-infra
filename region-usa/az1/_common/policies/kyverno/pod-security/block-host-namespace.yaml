@@ -1,0 +1,58 @@
+# Block Host Namespaces
+# Reference: https://kyverno.io/policies/pod-security/baseline/disallow-host-namespaces/
+# CRITICAL: Prevents containers from sharing host PID, IPC, or network namespaces
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-host-namespaces
+  annotations:
+    policies.kyverno.io/title: Disallow Host Namespaces
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Host namespaces (hostPID, hostIPC, hostNetwork) allow containers to access
+      host-level resources. This creates security risks including:
+      - hostPID: Access to host processes, ability to kill/trace processes
+      - hostIPC: Access to host inter-process communication
+      - hostNetwork: Access to host network stack, can bypass network policies
+      This policy ensures pods cannot share host namespaces.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: host-namespaces
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      validate:
+        message: >-
+          Sharing the host namespaces is disallowed. The fields spec.hostNetwork,
+          spec.hostIPC, and spec.hostPID must be set to false or not set.
+        pattern:
+          spec:
+            =(hostPID): "false"
+            =(hostIPC): "false"
+            =(hostNetwork): "false"
+

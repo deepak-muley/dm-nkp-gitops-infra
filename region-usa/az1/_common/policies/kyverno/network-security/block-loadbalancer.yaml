@@ -1,0 +1,61 @@
+# Block LoadBalancer Services
+# Reference: https://kyverno.io/policies/best-practices/restrict-service-types/
+# MEDIUM: Controls LoadBalancer service creation
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-loadbalancer-services
+  annotations:
+    policies.kyverno.io/title: Disallow LoadBalancer Services
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Service
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      LoadBalancer services provision external load balancers which can be costly
+      and create multiple external entry points. Consider using:
+      - ClusterIP + Ingress for HTTP/HTTPS traffic (preferred)
+      - A shared LoadBalancer for the Ingress controller
+      This policy prevents accidental LoadBalancer creation.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: disallow-loadbalancer
+      match:
+        any:
+          - resources:
+              kinds:
+                - Service
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+                # Allow for Ingress controllers
+                - traefik
+                - traefik-system
+                - ingress-nginx
+                - metallb-system
+      validate:
+        message: >-
+          LoadBalancer services are restricted. Use ClusterIP with an Ingress controller
+          for external access. Each LoadBalancer provisions an external IP which incurs cost.
+          If LoadBalancer is required, request an exception.
+        pattern:
+          spec:
+            type: "!LoadBalancer"
+

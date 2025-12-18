@@ -1,0 +1,35 @@
+# Kyverno Pod Security Policies
+# Based on Pod Security Standards (PSS) - Baseline and Restricted
+# Reference: https://kyverno.io/policies/pod-security/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # === CRITICAL (PSS Baseline) ===
+  # Block privileged containers
+  - block-privileged-container.yaml
+  # Block host namespaces (hostPID, hostIPC, hostNetwork)
+  - block-host-namespace.yaml
+  # Disallow dangerous capabilities
+  - disallowed-capabilities.yaml
+  # Block hostPath volumes
+  - restrict-hostpath.yaml
+
+  # === HIGH (PSS Baseline/Restricted) ===
+  # Block privilege escalation
+  - block-privilege-escalation.yaml
+  # Require non-root user
+  - require-run-as-nonroot.yaml
+  # Require dropping all capabilities
+  - drop-all-capabilities.yaml
+  # Restrict seccomp profiles
+  - restrict-seccomp.yaml
+  # Restrict proc mount type
+  - restrict-proc-mount.yaml
+  # Restrict unsafe sysctls
+  - restrict-sysctls.yaml
+
+  # === MEDIUM (PSS Restricted) ===
+  # Require read-only root filesystem
+  - require-readonly-rootfs.yaml
+  # Restrict volume types to safe list
+  - restrict-volume-types.yaml

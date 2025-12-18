@@ -1,0 +1,44 @@
+# Restrict External IPs
+# Reference: https://kyverno.io/policies/best-practices/restrict-service-external-ips/
+# HIGH: Controls external IP assignment on Services
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-external-ips
+  annotations:
+    policies.kyverno.io/title: Restrict External IPs
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Service
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Service externalIPs can be used to hijack traffic. This feature is rarely
+      needed and poses a security risk. This policy blocks Services with externalIPs
+      unless they are in the allowed list.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: restrict-external-ips
+      match:
+        any:
+          - resources:
+              kinds:
+                - Service
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - metallb-system
+      validate:
+        message: >-
+          Setting externalIPs on Services is not allowed. ExternalIPs can be used
+          for traffic hijacking attacks. Use LoadBalancer or Ingress instead.
+        pattern:
+          spec:
+            =(externalIPs): []
+

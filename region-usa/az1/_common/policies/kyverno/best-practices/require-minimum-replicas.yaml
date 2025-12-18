@@ -1,0 +1,67 @@
+# Require Minimum Replicas
+# Reference: https://kyverno.io/policies/other/require-minimum-replicas/
+# HIGH: Ensures high availability for production workloads
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-minimum-replicas
+  annotations:
+    policies.kyverno.io/title: Require Minimum Replicas
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Deployment, StatefulSet
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      For production workloads, running a single replica is a single point of
+      failure. This policy requires Deployments and StatefulSets in production
+      namespaces to have at least 2 replicas for high availability.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: deployment-minimum-replicas
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+              namespaceSelector:
+                matchExpressions:
+                  - key: environment
+                    operator: In
+                    values:
+                      - production
+                      - prod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: >-
+          Deployments in production must have at least 2 replicas for high availability.
+          Current replicas: {{request.object.spec.replicas}}
+        pattern:
+          spec:
+            replicas: ">1"
+    - name: statefulset-minimum-replicas
+      match:
+        any:
+          - resources:
+              kinds:
+                - StatefulSet
+              namespaceSelector:
+                matchExpressions:
+                  - key: environment
+                    operator: In
+                    values:
+                      - production
+                      - prod
+      validate:
+        message: >-
+          StatefulSets in production must have at least 2 replicas for high availability.
+        pattern:
+          spec:
+            replicas: ">1"
+

@@ -1,0 +1,48 @@
+# Add Safe-to-Evict Annotation
+# Reference: https://kyverno.io/policies/other/add-safe-to-evict/
+# LOW: Helps cluster autoscaler make better decisions
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-safe-to-evict
+  annotations:
+    policies.kyverno.io/title: Add Safe-to-Evict Annotation
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      The cluster autoscaler uses the safe-to-evict annotation to determine if
+      a pod can be evicted during scale-down. This mutation policy adds the
+      annotation to pods using emptyDir volumes (which are otherwise considered
+      unsafe to evict).
+spec:
+  rules:
+    - name: add-safe-to-evict-emptydir
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      preconditions:
+        all:
+          # Only mutate pods with emptyDir volumes
+          - key: "{{ request.object.spec.volumes[?emptyDir] | length(@) }}"
+            operator: GreaterThan
+            value: 0
+          # Don't override if already set
+          - key: "{{ request.object.metadata.annotations.\"cluster-autoscaler.kubernetes.io/safe-to-evict\" || '' }}"
+            operator: Equals
+            value: ""
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            annotations:
+              cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+

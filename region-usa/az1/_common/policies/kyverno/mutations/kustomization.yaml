@@ -1,0 +1,16 @@
+# Kyverno Mutation Policies
+# Reference: https://kyverno.io/policies/
+#
+# These policies automatically modify resources to add secure defaults and
+# improve operational efficiency. They run BEFORE validation policies.
+#
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Medium - Add default security context to pods
+  - add-default-securitycontext.yaml
+  # Low - Add image pull secrets for private registries
+  - add-imagepullsecrets.yaml
+  # Low - Add default tolerations for resilience
+  - add-default-tolerations.yaml
+

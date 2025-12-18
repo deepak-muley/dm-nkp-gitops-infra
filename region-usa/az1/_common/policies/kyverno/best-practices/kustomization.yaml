@@ -1,0 +1,16 @@
+# Kyverno Best Practices Policies
+# Reference: https://kyverno.io/policies/best-practices/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # High - Require minimum replicas for HA
+  - require-minimum-replicas.yaml
+  # Medium - Require pod anti-affinity for resilience
+  - require-pod-antiaffinity.yaml
+  # Medium - Require deployment strategy for safe rollouts
+  - require-deployment-strategy.yaml
+  # Medium - Disallow empty ingress host
+  - disallow-empty-ingress-host.yaml
+  # Low - Add safe-to-evict annotation (mutation policy)
+  - add-safe-to-evict.yaml
+

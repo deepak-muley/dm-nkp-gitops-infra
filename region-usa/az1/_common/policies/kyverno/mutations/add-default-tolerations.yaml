@@ -1,0 +1,46 @@
+# Add Default Tolerations
+# Reference: https://kyverno.io/policies/other/add-tolerations/
+# LOW: Automatically adds common tolerations to pods
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-default-tolerations
+  annotations:
+    policies.kyverno.io/title: Add Default Tolerations
+    policies.kyverno.io/category: Mutations
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      This mutation policy adds default tolerations to pods to handle common
+      node conditions gracefully. This prevents pods from being evicted
+      immediately when nodes experience brief issues.
+spec:
+  rules:
+    - name: add-tolerations
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      mutate:
+        patchStrategicMerge:
+          spec:
+            tolerations:
+              # Tolerate node not-ready for 5 minutes
+              - key: "node.kubernetes.io/not-ready"
+                operator: "Exists"
+                effect: "NoExecute"
+                +(tolerationSeconds): 300
+              # Tolerate node unreachable for 5 minutes
+              - key: "node.kubernetes.io/unreachable"
+                operator: "Exists"
+                effect: "NoExecute"
+                +(tolerationSeconds): 300
+

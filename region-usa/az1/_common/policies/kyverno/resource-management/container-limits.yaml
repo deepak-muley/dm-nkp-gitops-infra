@@ -1,0 +1,96 @@
+# Enforce Maximum Container Limits
+# Reference: https://kyverno.io/policies/other/restrict-pod-resources/
+# MEDIUM: Prevents excessive resource allocation
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-container-resources
+  annotations:
+    policies.kyverno.io/title: Restrict Container Resources
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Limits the maximum CPU and memory that can be requested by a single container.
+      This prevents any single container from requesting excessive resources that
+      could starve other workloads. Adjust the limits based on your cluster capacity.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: validate-cpu-limit
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      validate:
+        message: >-
+          Container CPU limit cannot exceed 8 cores (8000m). Current limit: {{request.object.spec.containers[].resources.limits.cpu}}.
+          For workloads requiring more resources, request an exception.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.resources.limits.cpu | replace(@, 'm', '') | to_number(@) }}"
+                    operator: GreaterThan
+                    value: 8000
+    - name: validate-memory-limit
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.containers[].resources.limits.memory || '' }}"
+            operator: NotEquals
+            value: ""
+      validate:
+        message: >-
+          Container memory limit cannot exceed 32Gi. For workloads requiring more
+          resources, request an exception.
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.containers[?resources.limits.memory && contains(resources.limits.memory, 'Gi')].resources.limits.memory | [?contains(@, 'Gi')] | [0] | replace(@, 'Gi', '') | to_number(@) || `0` }}"
+                operator: GreaterThan
+                value: 32
+

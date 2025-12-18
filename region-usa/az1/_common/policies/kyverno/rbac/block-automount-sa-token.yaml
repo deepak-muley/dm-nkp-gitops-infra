@@ -1,0 +1,67 @@
+# Require Explicit ServiceAccount Token Mount
+# Reference: https://kyverno.io/policies/best-practices/require-sa-token-automount/
+# MEDIUM: Controls automatic mounting of ServiceAccount tokens
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-sa-token-automount-disabled
+  annotations:
+    policies.kyverno.io/title: Require SA Token Automount Disabled
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod, ServiceAccount
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      By default, Kubernetes mounts a ServiceAccount token in every pod. This token
+      can be used to authenticate to the API server. For pods that don't need API
+      access, this is an unnecessary security risk. This policy requires pods to
+      explicitly set automountServiceAccountToken to false unless they need API access.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-explicit-automount
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+                # Platform components that need API access
+                - kommander
+                - kommander-flux
+                - cert-manager
+                - traefik
+                - kyverno
+                - gatekeeper-system
+      validate:
+        message: >-
+          Pods should explicitly disable automountServiceAccountToken if they don't
+          need Kubernetes API access. Set spec.automountServiceAccountToken to false.
+          If API access is required, add annotation 'policy.kyverno.io/api-access: required'.
+        anyPattern:
+          # Either disable automount
+          - spec:
+              automountServiceAccountToken: false
+          # Or explicitly acknowledge API access is needed
+          - metadata:
+              annotations:
+                policy.kyverno.io/api-access: "required"
+

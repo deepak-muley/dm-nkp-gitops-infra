@@ -1,0 +1,47 @@
+# Require Pod PriorityClass
+# Reference: https://kyverno.io/policies/best-practices/require-pod-priorityclass/
+# MEDIUM: Ensures pods have a priority class
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-pod-priorityclass
+  annotations:
+    policies.kyverno.io/title: Require Pod PriorityClass
+    policies.kyverno.io/category: Multi-Tenancy
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      PriorityClasses determine the relative priority of pods for scheduling and
+      preemption. Without explicit priority, pods get the default priority which
+      may cause important workloads to be preempted. This policy requires all
+      pods to specify a priorityClassName.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-priorityclass
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+      validate:
+        message: >-
+          Pods must specify a priorityClassName to ensure proper scheduling priority.
+          Available PriorityClasses can be listed with: kubectl get priorityclasses
+        pattern:
+          spec:
+            priorityClassName: "?*"
+

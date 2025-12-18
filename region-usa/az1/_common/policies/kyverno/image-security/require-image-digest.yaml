@@ -1,0 +1,61 @@
+# Require Image Digest
+# Reference: https://kyverno.io/policies/best-practices/require-image-digest/
+# MEDIUM: Requires image digests for immutability (strict environments only)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-image-digest
+  annotations:
+    policies.kyverno.io/title: Require Image Digest
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Container images should use digests instead of tags for immutability.
+      A digest (sha256) ensures the exact same image is always used.
+      Note: This is a strict policy - enable only in high-security environments.
+      Tags like v1.0.0 are sufficient for most use cases.
+spec:
+  # Keep in Audit mode - digest requirement is strict
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: image-digest
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      validate:
+        message: >-
+          Images should specify a digest for immutability.
+          Example: nginx@sha256:abc123...
+          This ensures the exact same image version is always deployed.
+        pattern:
+          spec:
+            containers:
+              - image: "*@sha256:*"
+            =(initContainers):
+              - image: "*@sha256:*"
+            =(ephemeralContainers):
+              - image: "*@sha256:*"
+

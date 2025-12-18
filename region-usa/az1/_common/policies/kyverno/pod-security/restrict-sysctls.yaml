@@ -1,0 +1,58 @@
+# Restrict Sysctls
+# Reference: https://kyverno.io/policies/pod-security/baseline/restrict-sysctls/
+# HIGH: Restricts unsafe sysctls
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-sysctls
+  annotations:
+    policies.kyverno.io/title: Restrict Sysctls
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Sysctls can disable security features or affect all containers on a host.
+      Only safe sysctls are allowed. This policy ensures that sysctls are either
+      unset or set to safe values per the Pod Security Standards Baseline profile.
+      Allowed sysctls: kernel.shm_rmid_forced, net.ipv4.ip_local_port_range,
+      net.ipv4.ip_unprivileged_port_start, net.ipv4.tcp_syncookies,
+      net.ipv4.ping_group_range.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-sysctls
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+      validate:
+        message: >-
+          Setting additional sysctls above the allowed safe set is disallowed.
+          Allowed sysctls: kernel.shm_rmid_forced, net.ipv4.ip_local_port_range,
+          net.ipv4.ip_unprivileged_port_start, net.ipv4.tcp_syncookies,
+          net.ipv4.ping_group_range.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.spec.securityContext.sysctls[].name || `[]` }}"
+                operator: AnyNotIn
+                value:
+                  - kernel.shm_rmid_forced
+                  - net.ipv4.ip_local_port_range
+                  - net.ipv4.ip_unprivileged_port_start
+                  - net.ipv4.tcp_syncookies
+                  - net.ipv4.ping_group_range
+                  - ""
+

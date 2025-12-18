@@ -1,0 +1,103 @@
+# Require Health Probes
+# Reference: https://kyverno.io/policies/best-practices/require-probes/
+# MEDIUM: Ensures containers have liveness and readiness probes
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-probes
+  annotations:
+    policies.kyverno.io/title: Require Probes
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Liveness and readiness probes are important for application health monitoring.
+      - Readiness probes determine when a container is ready to accept traffic
+      - Liveness probes determine when to restart a container
+      This policy validates that containers have both probes defined.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-readiness-probe
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      # Skip Jobs and CronJobs (short-lived workloads)
+      preconditions:
+        all:
+          - key: "{{ request.object.metadata.ownerReferences[?kind=='Job'] || `[]` | length(@) }}"
+            operator: Equals
+            value: 0
+      validate:
+        message: >-
+          A readinessProbe is required for all containers. This determines when the
+          container is ready to accept traffic.
+        pattern:
+          spec:
+            containers:
+              - readinessProbe:
+                  httpGet: "*"
+                  | tcpSocket: "*"
+                  | exec: "*"
+    - name: require-liveness-probe
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      preconditions:
+        all:
+          - key: "{{ request.object.metadata.ownerReferences[?kind=='Job'] || `[]` | length(@) }}"
+            operator: Equals
+            value: 0
+      validate:
+        message: >-
+          A livenessProbe is required for all containers. This determines when to
+          restart a container that is unhealthy.
+        pattern:
+          spec:
+            containers:
+              - livenessProbe:
+                  httpGet: "*"
+                  | tcpSocket: "*"
+                  | exec: "*"
+

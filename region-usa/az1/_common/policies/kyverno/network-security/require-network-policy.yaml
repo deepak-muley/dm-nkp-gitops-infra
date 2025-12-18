@@ -1,0 +1,102 @@
+# Require Network Policy in Namespace
+# Reference: https://kyverno.io/policies/best-practices/require-networkpolicy/
+# HIGH: Ensures namespaces have network policies
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-networkpolicy
+  annotations:
+    policies.kyverno.io/title: Require NetworkPolicy
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Namespace
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      By default, Kubernetes allows all pod-to-pod communication. NetworkPolicies
+      provide network segmentation and are essential for multi-tenant clusters.
+      This policy generates a default-deny NetworkPolicy for new namespaces.
+spec:
+  rules:
+    - name: generate-default-deny-ingress
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              names:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - default
+                - capi-*
+                - cap*-system
+                - kommander*
+                - traefik*
+                - cert-manager
+                - gatekeeper-system
+                - kyverno
+      generate:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: default-deny-ingress
+        namespace: "{{ request.object.metadata.name }}"
+        synchronize: true
+        data:
+          spec:
+            # Default deny all ingress traffic
+            podSelector: {}
+            policyTypes:
+              - Ingress
+---
+# Generate default deny egress (stricter - optional)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-default-deny-egress
+  annotations:
+    policies.kyverno.io/title: Generate Default Deny Egress
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Namespace, NetworkPolicy
+    policies.kyverno.io/description: >-
+      Generates a default-deny egress NetworkPolicy for new namespaces.
+      This is stricter and may break applications that need external access.
+      Enable only after understanding your application requirements.
+spec:
+  rules:
+    - name: generate-default-deny-egress
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              selector:
+                matchLabels:
+                  network-policy/strict: "true"
+      generate:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: default-deny-egress
+        namespace: "{{ request.object.metadata.name }}"
+        synchronize: true
+        data:
+          spec:
+            podSelector: {}
+            policyTypes:
+              - Egress
+            # Allow DNS egress (essential)
+            egress:
+              - to:
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: kube-system
+                ports:
+                  - protocol: UDP
+                    port: 53
+                  - protocol: TCP
+                    port: 53
+

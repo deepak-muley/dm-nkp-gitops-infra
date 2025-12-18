@@ -1,0 +1,52 @@
+# Block Cluster Admin Bindings
+# Reference: https://kyverno.io/policies/best-practices/restrict-clusterrole-binding/
+# CRITICAL: Prevents binding to cluster-admin ClusterRole
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-clusterrole-binding
+  annotations:
+    policies.kyverno.io/title: Restrict ClusterRoleBinding
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: ClusterRoleBinding, RBAC
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      The cluster-admin ClusterRole has full access to all resources in the cluster.
+      Binding to this role should be restricted to avoid security risks.
+      This policy blocks new ClusterRoleBindings to cluster-admin except for
+      system accounts.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: restrict-cluster-admin
+      match:
+        any:
+          - resources:
+              kinds:
+                - ClusterRoleBinding
+      validate:
+        message: >-
+          Binding to the cluster-admin ClusterRole is not allowed. Create a custom
+          ClusterRole with only the permissions needed. If cluster-admin access is
+          required, request an exception from the security team.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.roleRef.name }}"
+                operator: Equals
+                value: cluster-admin
+              # Allow system service accounts
+              - key: "{{ request.object.subjects[].name || '' }}"
+                operator: AnyNotIn
+                value:
+                  - system:admin
+                  - system:masters
+                  - cluster-admin
+                  - kubernetes-admin
+                  # NKP/Kommander accounts
+                  - kommander
+                  - kommander-flux
+

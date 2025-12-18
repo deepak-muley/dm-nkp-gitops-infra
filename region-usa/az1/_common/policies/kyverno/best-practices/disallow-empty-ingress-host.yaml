@@ -1,0 +1,39 @@
+# Disallow Empty Ingress Host
+# Reference: https://kyverno.io/policies/best-practices/disallow-empty-ingress-host/
+# MEDIUM: Prevents catch-all ingress rules
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-empty-ingress-host
+  annotations:
+    policies.kyverno.io/title: Disallow Empty Ingress Host
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Ingress
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      An Ingress resource without a host acts as a catch-all for all incoming
+      HTTP traffic, which can be a security risk and cause conflicts. This
+      policy validates that Ingress resources have a host specified.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: disallow-empty-host
+      match:
+        any:
+          - resources:
+              kinds:
+                - Ingress
+      validate:
+        message: >-
+          Ingress must have a host specified. Empty host acts as a catch-all
+          which is a security risk and may cause routing conflicts.
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.rules[?!host] | length(@) }}"
+                operator: GreaterThan
+                value: 0
+

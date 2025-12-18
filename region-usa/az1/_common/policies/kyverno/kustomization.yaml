@@ -1,0 +1,60 @@
+# Kyverno Security Policies
+# Cloud Native Policy Management for Kubernetes
+# Reference: https://kyverno.io/policies/
+#
+# These policies are based on:
+# - Kyverno Policy Library: https://kyverno.io/policies/
+# - Pod Security Standards (Baseline & Restricted)
+# - Kubernetes Best Practices
+# - CIS Kubernetes Benchmark guidelines
+#
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # ═══════════════════════════════════════════════════════════════
+  # VALIDATION POLICIES
+  # ═══════════════════════════════════════════════════════════════
+
+  # Pod Security Policies (PSS-based)
+  # Block privileged containers, host namespaces, dangerous capabilities
+  - pod-security
+
+  # Image Security Policies
+  # Restrict registries, block latest tag, validate pull policies
+  - image-security
+
+  # Resource Management Policies
+  # Require requests/limits, labels, probes
+  - resource-management
+
+  # Network Security Policies
+  # Block NodePort/LoadBalancer, require TLS, generate NetworkPolicies
+  - network-security
+
+  # RBAC Security Policies
+  # Restrict cluster-admin, block wildcards, control ServiceAccounts
+  - rbac
+
+  # ═══════════════════════════════════════════════════════════════
+  # ADDITIONAL POLICY CATEGORIES
+  # ═══════════════════════════════════════════════════════════════
+
+  # Supply Chain Security Policies
+  # Image signature verification (requires configuration)
+  - supply-chain
+
+  # Multi-Tenancy Policies
+  # Resource quotas, namespace restrictions, priority classes
+  - multi-tenancy
+
+  # Best Practices Policies
+  # HA replicas, anti-affinity, deployment strategies
+  - best-practices
+
+  # ═══════════════════════════════════════════════════════════════
+  # MUTATION POLICIES (Auto-inject secure defaults)
+  # ═══════════════════════════════════════════════════════════════
+
+  # Mutation Policies
+  # Add security context, image pull secrets, tolerations
+  - mutations

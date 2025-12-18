@@ -1,0 +1,14 @@
+# Kyverno Image Security Policies
+# Reference: https://kyverno.io/policies/best-practices/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Critical - Restrict allowed container registries
+  - allowed-repos.yaml
+  # High - Block :latest tag usage
+  - block-latest-tag.yaml
+  # Medium - Validate image pull policy
+  - disallow-image-pull-policy-always.yaml
+  # Medium - Require image digest (strict - keep in Audit)
+  - require-image-digest.yaml
+

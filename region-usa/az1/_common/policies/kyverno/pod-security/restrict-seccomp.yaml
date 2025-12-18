@@ -1,0 +1,63 @@
+# Restrict Seccomp Profiles
+# Reference: https://kyverno.io/policies/pod-security/restricted/restrict-seccomp-strict/
+# HIGH: Ensures proper seccomp profiles are used
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-seccomp-strict
+  annotations:
+    policies.kyverno.io/title: Restrict Seccomp (Strict)
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      The Seccomp profile must be explicitly set to one of the allowed values.
+      This policy ensures that the seccomp profile is set to `RuntimeDefault` or
+      `Localhost`. Seccomp limits the syscalls a container can make, reducing
+      the attack surface.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-seccomp-strict
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      validate:
+        message: >-
+          A seccomp profile must be set. Use RuntimeDefault or Localhost profile.
+          Set spec.securityContext.seccompProfile.type to RuntimeDefault or Localhost.
+        anyPattern:
+          # Pod-level seccomp
+          - spec:
+              securityContext:
+                seccompProfile:
+                  type: "RuntimeDefault | Localhost"
+          # Container-level seccomp (all containers must have it)
+          - spec:
+              containers:
+                - securityContext:
+                    seccompProfile:
+                      type: "RuntimeDefault | Localhost"
+

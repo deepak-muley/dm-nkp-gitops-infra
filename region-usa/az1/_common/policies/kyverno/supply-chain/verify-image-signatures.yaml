@@ -1,0 +1,124 @@
+# Verify Image Signatures (Sigstore/Cosign)
+# Reference: https://kyverno.io/policies/other/verify-image/
+# CRITICAL: Ensures container images are signed
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+  annotations:
+    policies.kyverno.io/title: Verify Image Signatures
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod, Image
+    kyverno.io/kyverno-version: 1.7.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Verifying image signatures ensures that only trusted, unmodified images
+      run in your cluster. This policy verifies that container images are signed
+      using Sigstore cosign. Configure the public key or keyless verification
+      based on your signing setup.
+
+      NOTE: This is a template policy. You must configure:
+      1. The image pattern to match your registries
+      2. The public key or keyless issuer/subject for verification
+spec:
+  validationFailureAction: Audit
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+      # Example: Verify images from your private registry
+      # Uncomment and configure based on your setup
+      verifyImages:
+        # Option 1: Public key verification (cosign generate-key-pair)
+        # - imageReferences:
+        #     - "harbor.internal.company.com/*"
+        #   attestors:
+        #     - count: 1
+        #       entries:
+        #         - keys:
+        #             publicKeys: |-
+        #               -----BEGIN PUBLIC KEY-----
+        #               YOUR_COSIGN_PUBLIC_KEY_HERE
+        #               -----END PUBLIC KEY-----
+
+        # Option 2: Keyless verification (Sigstore/Fulcio)
+        # - imageReferences:
+        #     - "ghcr.io/your-org/*"
+        #   attestors:
+        #     - count: 1
+        #       entries:
+        #         - keyless:
+        #             subject: "https://github.com/your-org/*"
+        #             issuer: "https://token.actions.githubusercontent.com"
+
+        # Placeholder - replace with your configuration
+        - imageReferences:
+            - "docker.io/library/nginx:*"
+          mutateDigest: true
+          verifyDigest: true
+          required: false  # Set to true when ready to enforce
+---
+# Alternative: Require image attestations (SBOM, SLSA provenance)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-image-attestations
+  annotations:
+    policies.kyverno.io/title: Require Image Attestations
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod, Image
+    policies.kyverno.io/description: >-
+      Requires images to have attestations such as SBOM (Software Bill of Materials)
+      or SLSA provenance. This ensures supply chain transparency.
+
+      NOTE: This is a template - configure based on your attestation setup.
+spec:
+  validationFailureAction: Audit
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: require-sbom-attestation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      # Example SBOM attestation verification
+      # Uncomment and configure based on your setup
+      # verifyImages:
+      #   - imageReferences:
+      #       - "your-registry.com/*"
+      #     attestations:
+      #       - predicateType: https://spdx.dev/Document
+      #         conditions:
+      #           - all:
+      #               - key: "{{ creationInfo.created }}"
+      #                 operator: NotEquals
+      #                 value: ""
+      validate:
+        message: >-
+          This is a placeholder policy for image attestation verification.
+          Configure verifyImages rules based on your signing/attestation setup.
+        pattern:
+          metadata:
+            name: "*"
+

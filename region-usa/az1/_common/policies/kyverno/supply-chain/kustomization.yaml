@@ -1,0 +1,12 @@
+# Kyverno Supply Chain Security Policies
+# Reference: https://kyverno.io/policies/other/verify-image/
+#
+# NOTE: These policies are templates that require configuration.
+# Update with your signing keys, registries, and attestation requirements.
+#
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Critical - Verify image signatures (requires configuration)
+  - verify-image-signatures.yaml
+

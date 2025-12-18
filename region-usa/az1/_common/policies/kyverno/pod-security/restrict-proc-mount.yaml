@@ -1,0 +1,54 @@
+# Restrict Proc Mount
+# Reference: https://kyverno.io/policies/pod-security/baseline/restrict-proc-mount/
+# HIGH: Restricts the proc mount type
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-proc-mount
+  annotations:
+    policies.kyverno.io/title: Restrict Proc Mount
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      The default /proc masks are set up to reduce the attack surface. This policy
+      ensures that the proc mount type is set to Default (or unset), preventing
+      containers from having unmasked access to /proc filesystem.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-proc-mount
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+      validate:
+        message: >-
+          Changing the proc mount type from the default is not allowed. The field
+          spec.containers[*].securityContext.procMount must be unset or set to Default.
+        pattern:
+          spec:
+            containers:
+              - =(securityContext):
+                  =(procMount): "Default"
+            =(initContainers):
+              - =(securityContext):
+                  =(procMount): "Default"
+            =(ephemeralContainers):
+              - =(securityContext):
+                  =(procMount): "Default"
+

@@ -1,7 +1,15 @@
 # Management Cluster Policies
 # References shared policies from _common/policies/
+#
+# Note: Enable either Gatekeeper OR Kyverno policies, not both.
+# Both provide equivalent security controls - choose based on your preference.
+#
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
+  # Gatekeeper policies (OPA-based)
   - flux-ks-gatekeeper.yaml
+  # Kyverno policies (Kubernetes-native)
+  # Uncomment to use Kyverno instead of or alongside Gatekeeper
+  # - flux-ks-kyverno.yaml
 

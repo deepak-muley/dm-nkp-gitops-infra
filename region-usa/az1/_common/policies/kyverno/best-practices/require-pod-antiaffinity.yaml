@@ -1,0 +1,67 @@
+# Require Pod Anti-Affinity
+# Reference: https://kyverno.io/policies/other/require-pod-antiaffinity/
+# MEDIUM: Spreads pods across nodes for resilience
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-pod-antiaffinity
+  annotations:
+    policies.kyverno.io/title: Require Pod Anti-Affinity
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Deployment
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Pod anti-affinity ensures that pods of the same application are spread
+      across different nodes. This prevents a single node failure from taking
+      down all replicas. This policy requires Deployments with more than one
+      replica to have pod anti-affinity configured.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-antiaffinity
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.replicas || `1` }}"
+            operator: GreaterThan
+            value: 1
+      validate:
+        message: >-
+          Deployments with more than one replica should have pod anti-affinity
+          configured to spread pods across nodes. Add spec.template.spec.affinity.podAntiAffinity.
+        anyPattern:
+          - spec:
+              template:
+                spec:
+                  affinity:
+                    podAntiAffinity:
+                      preferredDuringSchedulingIgnoredDuringExecution:
+                        - podAffinityTerm:
+                            topologyKey: "?*"
+          - spec:
+              template:
+                spec:
+                  affinity:
+                    podAntiAffinity:
+                      requiredDuringSchedulingIgnoredDuringExecution:
+                        - topologyKey: "?*"
+          - spec:
+              template:
+                spec:
+                  topologySpreadConstraints:
+                    - topologyKey: "?*"
+

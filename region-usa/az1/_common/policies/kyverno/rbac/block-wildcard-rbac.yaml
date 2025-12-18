@@ -1,0 +1,113 @@
+# Block Wildcard RBAC
+# Reference: https://kyverno.io/policies/best-practices/disallow-wildcards-in-clusterroles/
+# CRITICAL: Prevents wildcard (*) permissions in RBAC
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-wildcards-in-roles
+  annotations:
+    policies.kyverno.io/title: Disallow Wildcards in Roles
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: ClusterRole, Role, RBAC
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Wildcards ('*') in RBAC rules grant overly permissive access. This violates
+      the principle of least privilege and makes it difficult to audit actual
+      permissions. This policy validates that ClusterRoles and Roles do not
+      contain wildcards in resources, verbs, or apiGroups.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: clusterrole-no-wildcard-resources
+      match:
+        any:
+          - resources:
+              kinds:
+                - ClusterRole
+      exclude:
+        any:
+          - resources:
+              names:
+                - cluster-admin
+                - admin
+                - edit
+                - view
+                - system:*
+      validate:
+        message: >-
+          Wildcards ('*') are not allowed in ClusterRole resources. Specify
+          explicit resource names. Found wildcard in: {{request.object.rules[].resources[]}}
+        foreach:
+          - list: "request.object.rules[]"
+            deny:
+              conditions:
+                any:
+                  - key: "*"
+                    operator: AnyIn
+                    value: "{{ element.resources[] || `[]` }}"
+    - name: clusterrole-no-wildcard-verbs
+      match:
+        any:
+          - resources:
+              kinds:
+                - ClusterRole
+      exclude:
+        any:
+          - resources:
+              names:
+                - cluster-admin
+                - admin
+                - edit
+                - view
+                - system:*
+      validate:
+        message: >-
+          Wildcards ('*') are not allowed in ClusterRole verbs. Specify explicit
+          verbs like get, list, watch, create, update, delete.
+        foreach:
+          - list: "request.object.rules[]"
+            deny:
+              conditions:
+                any:
+                  - key: "*"
+                    operator: AnyIn
+                    value: "{{ element.verbs[] || `[]` }}"
+    - name: role-no-wildcard-resources
+      match:
+        any:
+          - resources:
+              kinds:
+                - Role
+      validate:
+        message: >-
+          Wildcards ('*') are not allowed in Role resources. Specify explicit
+          resource names.
+        foreach:
+          - list: "request.object.rules[]"
+            deny:
+              conditions:
+                any:
+                  - key: "*"
+                    operator: AnyIn
+                    value: "{{ element.resources[] || `[]` }}"
+    - name: role-no-wildcard-verbs
+      match:
+        any:
+          - resources:
+              kinds:
+                - Role
+      validate:
+        message: >-
+          Wildcards ('*') are not allowed in Role verbs. Specify explicit verbs.
+        foreach:
+          - list: "request.object.rules[]"
+            deny:
+              conditions:
+                any:
+                  - key: "*"
+                    operator: AnyIn
+                    value: "{{ element.verbs[] || `[]` }}"
+

@@ -4,6 +4,10 @@ kind: Kustomization
 # Clusters can reference these as bases and apply overlays
 resources:
   - sealed-secrets-controller/
+  # Gatekeeper policies (if Gatekeeper is installed)
+  # - gatekeeper/
+  # Kyverno policies (if Kyverno is installed)
+  # - kyverno/
 # Example resources to add:
 #   - cert-manager/
 #   - ingress-nginx/

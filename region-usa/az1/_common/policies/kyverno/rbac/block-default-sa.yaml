@@ -1,0 +1,56 @@
+# Block Default ServiceAccount Usage
+# Reference: https://kyverno.io/policies/best-practices/disallow-default-serviceaccount/
+# HIGH: Prevents pods from using the default ServiceAccount
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-default-serviceaccount
+  annotations:
+    policies.kyverno.io/title: Disallow Default ServiceAccount
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod, ServiceAccount
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Kubernetes creates a 'default' ServiceAccount in each namespace. Using this
+      account is a security risk because:
+      - It may have accumulated permissions over time
+      - It's shared by all pods without explicit SA
+      - It makes auditing difficult
+      This policy requires pods to explicitly specify a non-default ServiceAccount.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: disallow-default-sa
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      validate:
+        message: >-
+          Using the 'default' ServiceAccount is not allowed. Create a dedicated
+          ServiceAccount for your application with only the required permissions.
+        pattern:
+          spec:
+            serviceAccountName: "!default"
+

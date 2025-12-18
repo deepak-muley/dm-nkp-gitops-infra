@@ -1,0 +1,18 @@
+# Kyverno Network Security Policies
+# Reference: https://kyverno.io/policies/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # High - Block host port bindings
+  - block-host-ports.yaml
+  # High - Require TLS on Ingress
+  - require-ingress-tls.yaml
+  # High - Generate default NetworkPolicies
+  - require-network-policy.yaml
+  # High - Restrict external IPs
+  - restrict-external-ips.yaml
+  # Medium - Block NodePort services
+  - block-nodeport.yaml
+  # Medium - Block LoadBalancer services
+  - block-loadbalancer.yaml
+

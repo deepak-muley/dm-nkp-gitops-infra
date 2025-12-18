@@ -1,0 +1,64 @@
+# Restrict Namespace Creation
+# Reference: https://kyverno.io/policies/other/restrict-namespace-creation/
+# HIGH: Controls who can create namespaces
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-namespace-creation
+  annotations:
+    policies.kyverno.io/title: Restrict Namespace Creation
+    policies.kyverno.io/category: Multi-Tenancy
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Namespace
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      In multi-tenant clusters, namespace creation should be controlled.
+      This policy restricts namespace names to follow a naming convention
+      and prevents reserved prefixes from being used.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: block-reserved-prefixes
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      validate:
+        message: >-
+          Namespace names starting with 'kube-', 'system-', 'capi-', 'cap',
+          'kommander', or 'default' are reserved for system use.
+        pattern:
+          metadata:
+            name: "!kube-* & !system-* & !capi-* & !cap?-* & !kommander* & !default*"
+    - name: require-namespace-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              names:
+                - kube-*
+                - default
+                - capi-*
+                - cap*-system
+                - kommander*
+      validate:
+        message: >-
+          New namespaces must have 'team' or 'owner' and 'environment' labels
+          for governance and cost tracking.
+        anyPattern:
+          - metadata:
+              labels:
+                team: "?*"
+                environment: "?*"
+          - metadata:
+              labels:
+                owner: "?*"
+                environment: "?*"
+

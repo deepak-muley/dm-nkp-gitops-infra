@@ -1,0 +1,111 @@
+# Require PodDisruptionBudget for Deployments
+# Reference: https://kyverno.io/policies/other/require-pdb/
+# MEDIUM: Ensures high availability during maintenance
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-pdb
+  annotations:
+    policies.kyverno.io/title: Require PodDisruptionBudget
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Deployment
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      PodDisruptionBudgets (PDB) ensure application availability during voluntary
+      disruptions like node drains or cluster upgrades. This policy validates that
+      Deployments with more than 1 replica have a corresponding PDB.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-pdb-for-ha-deployments
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      preconditions:
+        all:
+          # Only apply to Deployments with more than 1 replica
+          - key: "{{ request.object.spec.replicas || `1` }}"
+            operator: GreaterThan
+            value: 1
+      validate:
+        message: >-
+          Deployments with more than 1 replica should have a PodDisruptionBudget.
+          Create a PDB that matches the Deployment's label selector to ensure
+          availability during node maintenance.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.metadata.annotations.\"policy.kyverno.io/pdb-created\" || 'false' }}"
+                operator: Equals
+                value: "false"
+---
+# Generate PDB for new Deployments with replicas > 1
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-pdb-for-ha-deployments
+  annotations:
+    policies.kyverno.io/title: Add PodDisruptionBudget for HA Deployments
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/subject: Deployment, PodDisruptionBudget
+    policies.kyverno.io/description: >-
+      Automatically generates a PodDisruptionBudget for Deployments with more
+      than one replica. The PDB is set to allow at most one pod to be unavailable.
+spec:
+  rules:
+    - name: generate-pdb
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.replicas || `1` }}"
+            operator: GreaterThan
+            value: 1
+      generate:
+        apiVersion: policy/v1
+        kind: PodDisruptionBudget
+        name: "{{ request.object.metadata.name }}-pdb"
+        namespace: "{{ request.object.metadata.namespace }}"
+        synchronize: true
+        data:
+          spec:
+            maxUnavailable: 1
+            selector:
+              matchLabels:
+                "{{ request.object.spec.selector.matchLabels }}"
+

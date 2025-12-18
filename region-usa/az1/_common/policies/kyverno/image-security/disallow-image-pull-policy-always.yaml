@@ -1,0 +1,57 @@
+# Validate Image Pull Policy
+# Reference: https://kyverno.io/policies/best-practices/require-image-pull-policy-always/
+# MEDIUM: Ensures proper image pull policy
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: validate-image-pull-policy
+  annotations:
+    policies.kyverno.io/title: Validate Image Pull Policy
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Validates that images use proper imagePullPolicy. For production environments,
+      using 'Always' ensures the latest version of the tag is pulled, while 'Never'
+      can be used for local development. 'IfNotPresent' is the default and acceptable
+      for most cases when using immutable tags.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: validate-pull-policy
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      validate:
+        message: >-
+          Image pull policy must be explicitly set to 'Always' or 'IfNotPresent'.
+          Using 'Never' is only allowed for local development.
+        pattern:
+          spec:
+            containers:
+              - imagePullPolicy: "Always | IfNotPresent"
+            =(initContainers):
+              - imagePullPolicy: "Always | IfNotPresent"
+

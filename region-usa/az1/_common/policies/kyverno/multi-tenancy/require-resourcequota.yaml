@@ -1,0 +1,118 @@
+# Require ResourceQuota in Namespaces
+# Reference: https://kyverno.io/policies/best-practices/require-resourcequota/
+# HIGH: Ensures namespaces have resource quotas
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resourcequota
+  annotations:
+    policies.kyverno.io/title: Require ResourceQuota
+    policies.kyverno.io/category: Multi-Tenancy
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Namespace, ResourceQuota
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      ResourceQuotas limit the aggregate resource consumption per namespace.
+      Without quotas, a single namespace can consume all cluster resources.
+      This policy generates a default ResourceQuota for new namespaces.
+spec:
+  rules:
+    - name: generate-resourcequota
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              names:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - default
+                - capi-*
+                - cap*-system
+                - kommander*
+                - cert-manager
+                - traefik*
+                - gatekeeper-system
+                - kyverno
+      generate:
+        apiVersion: v1
+        kind: ResourceQuota
+        name: default-resourcequota
+        namespace: "{{ request.object.metadata.name }}"
+        synchronize: true
+        data:
+          spec:
+            hard:
+              # Compute resources
+              requests.cpu: "10"
+              requests.memory: "20Gi"
+              limits.cpu: "20"
+              limits.memory: "40Gi"
+              # Object counts
+              pods: "100"
+              services: "20"
+              secrets: "50"
+              configmaps: "50"
+              persistentvolumeclaims: "20"
+---
+# Generate LimitRange for namespaces
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-limitrange
+  annotations:
+    policies.kyverno.io/title: Generate LimitRange
+    policies.kyverno.io/category: Multi-Tenancy
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Namespace, LimitRange
+    policies.kyverno.io/description: >-
+      LimitRanges set default and maximum resource limits for containers.
+      This ensures pods that don't specify resources get reasonable defaults
+      and prevents extremely large resource requests.
+spec:
+  rules:
+    - name: generate-limitrange
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              names:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - default
+                - capi-*
+                - cap*-system
+                - kommander*
+      generate:
+        apiVersion: v1
+        kind: LimitRange
+        name: default-limitrange
+        namespace: "{{ request.object.metadata.name }}"
+        synchronize: true
+        data:
+          spec:
+            limits:
+              - type: Container
+                default:
+                  cpu: "500m"
+                  memory: "512Mi"
+                defaultRequest:
+                  cpu: "100m"
+                  memory: "128Mi"
+                max:
+                  cpu: "4"
+                  memory: "8Gi"
+                min:
+                  cpu: "10m"
+                  memory: "16Mi"
+
