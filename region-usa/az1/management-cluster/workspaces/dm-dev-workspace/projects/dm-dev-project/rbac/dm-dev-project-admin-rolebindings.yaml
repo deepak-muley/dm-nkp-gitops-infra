@@ -10,6 +10,7 @@
 #   - Cluster management
 ---
 # 1. Kommander Project Admin - full Kommander project admin rights
+# Uses inherited KommanderProjectRole from workspace
 apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
 kind: VirtualGroupKommanderProjectRoleBinding
 metadata:
@@ -20,9 +21,9 @@ metadata:
 spec:
   virtualGroupRef:
     name: dm-dev-project-admins
-  # Use workspaceRoleRef for inheriting workspace admin capabilities at project level
-  workspaceRoleRef:
-    name: kommander-workspace-admin
+  kommanderProjectRoleRef:
+    # This is inherited from workspace - ws-kommander-workspace-admin
+    name: ws-kommander-workspace-admin
 ---
 # 2. Project App Deployer - deploy and manage applications
 apiVersion: workspaces.kommander.mesosphere.io/v1alpha1

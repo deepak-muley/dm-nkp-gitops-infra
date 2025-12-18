@@ -31,8 +31,6 @@ metadata:
   finalizers:
     - workspaces.kommander.mesosphere.io/virtualgroupkommanderworkspacerolebinding
 spec:
-  placement:
-    clusterSelector: {} # Apply to all clusters in workspace
   virtualGroupRef:
     name: dm-dev-workspace-admins
   kommanderWorkspaceRoleRef:
