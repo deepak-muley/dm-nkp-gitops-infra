@@ -1,0 +1,67 @@
+# =============================================================================
+# SUPER ADMIN Role Bindings for dm-k8s-admins
+# =============================================================================
+#
+# IMPORTANT: What makes a SUPER ADMIN?
+# ------------------------------------
+# A true super admin in NKP needs BOTH:
+#   1. cluster-admin     → Full Kubernetes access (all namespaces, all resources)
+#   2. kommander-admin   → Full NKP/Kommander access (workspaces, projects, apps)
+#   3. dkp-kommander-admin → Full DKP UI access
+#
+# Without cluster-admin, the user can manage NKP resources but cannot:
+#   - Access all namespaces directly
+#   - Manage core K8s resources (nodes, PVs, etc.)
+#   - Debug system components
+#
+# =============================================================================
+---
+# 1. Kubernetes cluster-admin - Full K8s cluster access
+# This is the native Kubernetes super admin role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dm-k8s-admins-cluster-admin
+  annotations:
+    description: "Grants dm-k8s-admin full Kubernetes cluster-admin access"
+subjects:
+  # Must match the User name in VirtualGroup (and certificate CN)
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: dm-k8s-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+---
+# 2. NKP kommander-admin - Full NKP/Kommander access
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: VirtualGroupKommanderClusterRoleBinding
+metadata:
+  name: dm-k8s-admins-kommander-admin
+  annotations:
+    kommander.mesosphere.io/description: "Grants dm-k8s-admin full NKP/Kommander admin access"
+spec:
+  clusterRoleRef:
+    # kommander-admin provides full access to all Kommander/NKP resources:
+    # - Workspaces, Projects, Clusters
+    # - AppDeployments, Apps
+    # - VirtualGroups, Licenses
+    # - All Kommander CRDs
+    name: kommander-admin
+  virtualGroupRef:
+    name: dm-k8s-admins
+---
+# 3. DKP UI access - Full dashboard/UI access
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: VirtualGroupKommanderClusterRoleBinding
+metadata:
+  name: dm-k8s-admins-dkp-admin
+  annotations:
+    kommander.mesosphere.io/description: "Grants dm-k8s-admin full DKP UI access"
+spec:
+  clusterRoleRef:
+    # dkp-kommander-admin provides access to DKP UI paths (/dkp/*)
+    name: dkp-kommander-admin
+  virtualGroupRef:
+    name: dm-k8s-admins

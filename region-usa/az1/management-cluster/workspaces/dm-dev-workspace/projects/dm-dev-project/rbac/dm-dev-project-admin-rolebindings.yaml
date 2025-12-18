@@ -1,0 +1,54 @@
+# Project Admin Role Bindings for dm-dev-project
+# Binds dm-dev-project-admins VirtualGroup to project admin roles
+# This grants full administrative access ONLY within dm-dev-project:
+#   - All resources within this project namespace
+#   - Application deployments in this project
+#   - Project-level settings and configurations
+# Does NOT have access to:
+#   - Other projects in the workspace
+#   - Workspace-level settings
+#   - Cluster management
+---
+# 1. Kommander Project Admin - full Kommander project admin rights
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: VirtualGroupKommanderProjectRoleBinding
+metadata:
+  name: dm-dev-project-admins-kommander-admin
+  namespace: dm-dev-project
+  finalizers:
+    - workspaces.kommander.mesosphere.io/virtualgroupkommanderprojectrolebinding
+spec:
+  virtualGroupRef:
+    name: dm-dev-project-admins
+  # Use workspaceRoleRef for inheriting workspace admin capabilities at project level
+  workspaceRoleRef:
+    name: kommander-workspace-admin
+---
+# 2. Project App Deployer - deploy and manage applications
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: VirtualGroupProjectRoleBinding
+metadata:
+  name: dm-dev-project-admins-app-deployer
+  namespace: dm-dev-project
+  finalizers:
+    - workspaces.kommander.mesosphere.io/virtualgroupprojectrolebinding
+spec:
+  virtualGroupRef:
+    name: dm-dev-project-admins
+  projectRoleRef:
+    name: project-app-deployer
+---
+# 3. Project Config Manager - manage project configuration
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: VirtualGroupProjectRoleBinding
+metadata:
+  name: dm-dev-project-admins-config-manager
+  namespace: dm-dev-project
+  finalizers:
+    - workspaces.kommander.mesosphere.io/virtualgroupprojectrolebinding
+spec:
+  virtualGroupRef:
+    name: dm-dev-project-admins
+  projectRoleRef:
+    name: project-config-manager
+

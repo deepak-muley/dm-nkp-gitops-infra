@@ -1,0 +1,55 @@
+# Workspace Admin Role Bindings for dm-dev-workspace
+# Binds dm-dev-workspace-admins VirtualGroup to workspace admin roles
+# This grants full administrative access within dm-dev-workspace:
+#   - All projects within this workspace
+#   - All clusters attached to this workspace
+#   - All applications deployed to this workspace
+#   - Workspace-level settings and configurations
+---
+# 1. Workspace Admin - manages workspace resources
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: VirtualGroupWorkspaceRoleBinding
+metadata:
+  name: dm-dev-workspace-admins-workspace-admin
+  namespace: dm-dev-workspace
+  finalizers:
+    - workspaces.kommander.mesosphere.io/virtualgroupworkspacerolebinding
+spec:
+  placement:
+    clusterSelector: {} # Apply to all clusters in workspace
+  virtualGroupRef:
+    name: dm-dev-workspace-admins
+  workspaceRoleRef:
+    name: workspace-admin
+---
+# 2. Kommander Workspace Admin - manages Kommander-specific workspace features
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: VirtualGroupKommanderWorkspaceRoleBinding
+metadata:
+  name: dm-dev-workspace-admins-kommander-admin
+  namespace: dm-dev-workspace
+  finalizers:
+    - workspaces.kommander.mesosphere.io/virtualgroupkommanderworkspacerolebinding
+spec:
+  placement:
+    clusterSelector: {} # Apply to all clusters in workspace
+  virtualGroupRef:
+    name: dm-dev-workspace-admins
+  kommanderWorkspaceRoleRef:
+    name: kommander-workspace-admin
+---
+# 3. Workspace Cluster Admin - full cluster admin rights within workspace
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: VirtualGroupWorkspaceRoleBinding
+metadata:
+  name: dm-dev-workspace-admins-cluster-admin
+  namespace: dm-dev-workspace
+  finalizers:
+    - workspaces.kommander.mesosphere.io/virtualgroupworkspacerolebinding
+spec:
+  placement:
+    clusterSelector: {}
+  virtualGroupRef:
+    name: dm-dev-workspace-admins
+  workspaceRoleRef:
+    name: workspace-cluster-admin

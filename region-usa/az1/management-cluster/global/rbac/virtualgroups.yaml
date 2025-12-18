@@ -1,0 +1,81 @@
+# VirtualGroups for NKP RBAC
+# =============================================================================
+# VirtualGroups map users/groups to NKP roles.
+#
+# HOW KUBERNETES USERS WORK (without IDP):
+# ----------------------------------------
+# Kubernetes uses X.509 certificates for user authentication.
+# The "User" name in spec.subjects MUST match the CN (Common Name) in the
+# user's X.509 certificate.
+#
+# To create a user:
+#   1. Generate a private key and CSR with CN=<username>
+#   2. Sign the CSR with the cluster CA
+#   3. Create a kubeconfig with the signed certificate
+#   4. The VirtualGroup subject "name" must match the certificate CN
+#
+# See: scripts/create-k8s-user.sh for automated user creation
+# =============================================================================
+---
+# Global Admin (SUPER ADMIN) - Full access to ALL NKP and K8s resources
+# This is the highest level of access - equivalent to cluster-admin + kommander-admin
+apiVersion: kommander.mesosphere.io/v1beta1
+kind: VirtualGroup
+metadata:
+  annotations:
+    kommander.mesosphere.io/display-name: DM K8s Admins (Super Admin)
+    kommander.mesosphere.io/description: "Global super administrators with full access to NKP and Kubernetes"
+  name: dm-k8s-admins
+spec:
+  subjects:
+    # Certificate-based user: CN in certificate must be "dm-k8s-admin"
+    # Generate certificate: ./scripts/create-k8s-user.sh dm-k8s-admin
+    - apiGroup: rbac.authorization.k8s.io
+      kind: User
+      name: dm-k8s-admin
+    # For IDP/OIDC (uncomment if using external IdP):
+    # - apiGroup: rbac.authorization.k8s.io
+    #   kind: Group
+    #   name: oidc:dm-k8s-admins
+---
+# Workspace Admin - Full access to dm-dev-workspace and all its projects
+# Cannot access other workspaces or global settings
+apiVersion: kommander.mesosphere.io/v1beta1
+kind: VirtualGroup
+metadata:
+  annotations:
+    kommander.mesosphere.io/display-name: DM Dev Workspace Admins
+    kommander.mesosphere.io/description: "Administrators for dm-dev-workspace only"
+  name: dm-dev-workspace-admins
+spec:
+  subjects:
+    # Certificate-based user: CN in certificate must be "dm-dev-workspace-admin"
+    # Generate certificate: ./scripts/create-k8s-user.sh dm-dev-workspace-admin
+    - apiGroup: rbac.authorization.k8s.io
+      kind: User
+      name: dm-dev-workspace-admin
+    # For IDP/OIDC (uncomment if using external IdP):
+    # - apiGroup: rbac.authorization.k8s.io
+    #   kind: Group
+    #   name: oidc:dm-dev-workspace-admins
+---
+# Project Admin - Full access only to dm-dev-project
+# Cannot access workspace settings, other projects, or cluster management
+apiVersion: kommander.mesosphere.io/v1beta1
+kind: VirtualGroup
+metadata:
+  annotations:
+    kommander.mesosphere.io/display-name: DM Dev Project Admins
+    kommander.mesosphere.io/description: "Administrators for dm-dev-project only"
+  name: dm-dev-project-admins
+spec:
+  subjects:
+    # Certificate-based user: CN in certificate must be "dm-dev-project-admin"
+    # Generate certificate: ./scripts/create-k8s-user.sh dm-dev-project-admin
+    - apiGroup: rbac.authorization.k8s.io
+      kind: User
+      name: dm-dev-project-admin
+    # For IDP/OIDC (uncomment if using external IdP):
+    # - apiGroup: rbac.authorization.k8s.io
+    #   kind: Group
+    #   name: oidc:dm-dev-project-admins
