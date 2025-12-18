@@ -1,0 +1,16 @@
+---
+# Note: kommander-workspace is a built-in NKP workspace that targets the management cluster
+# This is a reference to the existing kommander-workspace, not a new workspace definition
+# The kommander-workspace is pre-created by NKP and should already exist
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: Workspace
+metadata:
+  name: kommander-workspace
+  annotations:
+    workspace.kommander.mesosphere.io/allow-existing-namespace: "true"
+  labels:
+    caren.nutanix.com/namespace-sync: ""
+spec:
+  namespaceName: kommander
+status: {}
+

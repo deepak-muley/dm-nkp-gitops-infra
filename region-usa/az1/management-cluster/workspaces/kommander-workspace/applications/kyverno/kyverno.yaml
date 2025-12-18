@@ -1,0 +1,16 @@
+apiVersion: apps.kommander.d2iq.io/v1alpha3
+kind: AppDeployment
+metadata:
+  name: kyverno
+  namespace: kommander
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: merge
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  appRef:
+    kind: App
+    name: kyverno-3.6.1
+  # Use host cluster selector to target management cluster
+  clusterSelector:
+    matchLabels:
+      kommander.d2iq.io/host-cluster: "true"
