@@ -1055,6 +1055,149 @@ region-usa/az1/management-cluster/
 
 ---
 
+## Verification Script & Sample Output
+
+### Running the Verification Script
+
+After creating users with `create-k8s-user.sh`, use the verification script to test permissions:
+
+```bash
+# Run verification script
+./scripts/verify-rbac-users.sh /Users/deepak.muley/ws/nkp
+
+# Or with default path
+./scripts/verify-rbac-users.sh
+```
+
+### Sample Output (All Tests Passing)
+
+```
+╔═══════════════════════════════════════════════════════════════╗
+║          NKP RBAC User Verification Script                    ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Kubeconfig Directory: /Users/deepak.muley/ws/nkp
+
+═══════════════════════════════════════════════════════════════
+  SUPER ADMIN: dm-k8s-admin
+═══════════════════════════════════════════════════════════════
+  Authenticated as: dm-k8s-admin
+
+─── Kubernetes Cluster Access (cluster-admin) ───
+  ✅ Get nodes                                          (expected: yes, got: yes)
+  ✅ Get PVs                                            (expected: yes, got: yes)
+  ✅ Get secrets (all namespaces)                       (expected: yes, got: yes)
+  ✅ Create namespaces                                  (expected: yes, got: yes)
+  ✅ Delete pods (kube-system)                          (expected: yes, got: yes)
+  ✅ All permissions (*)                                (expected: yes, got: yes)
+
+─── NKP/Kommander Access (kommander-admin) ───
+  ✅ Get workspaces                                     (expected: yes, got: yes)
+  ✅ Create workspaces                                  (expected: yes, got: yes)
+  ✅ Get projects (all)                                 (expected: yes, got: yes)
+  ✅ Get virtualgroups                                  (expected: yes, got: yes)
+  ✅ Get appdeployments                                 (expected: yes, got: yes)
+  ✅ Get kommanderclusters                              (expected: yes, got: yes)
+
+═══════════════════════════════════════════════════════════════
+  WORKSPACE ADMIN: dm-dev-workspace-admin
+═══════════════════════════════════════════════════════════════
+  Authenticated as: dm-dev-workspace-admin
+
+─── Workspace Access (dm-dev-workspace) ───
+  ✅ Get workspaceroles (dm-dev-workspace)              (expected: yes, got: yes)
+  ✅ Get projects (dm-dev-workspace)                    (expected: yes, got: yes)
+  ✅ Get pods (dm-dev-workspace)                        (expected: yes, got: yes)
+
+─── Should NOT Have Access To ───
+  ✅ Get nodes (cluster-level)                          (expected: no , got: no )
+  ✅ Get secrets (kube-system)                          (expected: no , got: no )
+  ✅ Get workspaceroles (kommander)                     (expected: no , got: no )
+  ✅ Create workspaces (global)                         (expected: no , got: no )
+
+═══════════════════════════════════════════════════════════════
+  PROJECT ADMIN: dm-dev-project-admin
+═══════════════════════════════════════════════════════════════
+  Authenticated as: dm-dev-project-admin
+
+─── Project Access (dm-dev-project) ───
+  ✅ Get pods (dm-dev-project)                          (expected: yes, got: yes)
+  ✅ Get projectroles (dm-dev-project)                  (expected: yes, got: yes)
+  ✅ Create configmaps (dm-dev-project)                 (expected: yes, got: yes)
+
+─── Should NOT Have Access To ───
+  ✅ Get nodes (cluster-level)                          (expected: no , got: no )
+  ✅ Get pods (dm-dev-workspace)                        (expected: no , got: no )
+  ✅ Get pods (default)                                 (expected: no , got: no )
+  ✅ Get workspaceroles (dm-dev-workspace)              (expected: no , got: no )
+  ✅ Create workspaces                                  (expected: no , got: no )
+
+═══════════════════════════════════════════════════════════════
+  TEST SUMMARY
+═══════════════════════════════════════════════════════════════
+
+  Total Tests:  27
+  Passed:       27
+  Failed:       0
+
+╔═══════════════════════════════════════════════════════════════╗
+║                    ALL TESTS PASSED! ✅                        ║
+╚═══════════════════════════════════════════════════════════════╝
+```
+
+### Understanding the Test Results
+
+| User | Tests | What's Verified |
+|------|-------|-----------------|
+| **dm-k8s-admin** | 12 tests | Full K8s cluster-admin + NKP kommander-admin access |
+| **dm-dev-workspace-admin** | 7 tests | Access to dm-dev-workspace, denied elsewhere |
+| **dm-dev-project-admin** | 8 tests | Access to dm-dev-project only, denied elsewhere |
+
+### Kubeconfig Locations
+
+After running `create-k8s-user.sh`, kubeconfigs are stored at:
+
+```
+/Users/deepak.muley/ws/nkp/
+├── dm-k8s-admin.kubeconfig           # Super Admin
+├── dm-k8s-admin.key                  # Private key (keep secure!)
+├── dm-k8s-admin.crt                  # Certificate
+├── dm-dev-workspace-admin.kubeconfig # Workspace Admin
+├── dm-dev-workspace-admin.key
+├── dm-dev-workspace-admin.crt
+├── dm-dev-project-admin.kubeconfig   # Project Admin
+├── dm-dev-project-admin.key
+└── dm-dev-project-admin.crt
+```
+
+### Quick Test Commands
+
+```bash
+# Test Super Admin
+kubectl --kubeconfig=/Users/deepak.muley/ws/nkp/dm-k8s-admin.kubeconfig auth can-i '*' '*'
+# Expected: yes
+
+# Test Workspace Admin
+kubectl --kubeconfig=/Users/deepak.muley/ws/nkp/dm-dev-workspace-admin.kubeconfig \
+    auth can-i get pods -n dm-dev-workspace
+# Expected: yes
+
+kubectl --kubeconfig=/Users/deepak.muley/ws/nkp/dm-dev-workspace-admin.kubeconfig \
+    auth can-i get nodes
+# Expected: no
+
+# Test Project Admin
+kubectl --kubeconfig=/Users/deepak.muley/ws/nkp/dm-dev-project-admin.kubeconfig \
+    auth can-i get pods -n dm-dev-project
+# Expected: yes
+
+kubectl --kubeconfig=/Users/deepak.muley/ws/nkp/dm-dev-project-admin.kubeconfig \
+    auth can-i get pods -n dm-dev-workspace
+# Expected: no
+```
+
+---
+
 ## Additional Resources
 
 - [Kubernetes RBAC Documentation](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
