@@ -9,7 +9,7 @@ metadata:
 spec:
   appRef:
     kind: ClusterApp
-    name: kube-prometheus-stack-34.9.3
+    name: kube-prometheus-stack-78.4.0
   # Use host cluster selector to target management cluster
   clusterSelector:
     matchLabels:

@@ -9,7 +9,7 @@ metadata:
 spec:
   appRef:
     kind: ClusterApp
-    name: cloudnative-pg-1.28.0
+    name: cloudnative-pg-0.26.1
   clusterSelector:
     matchExpressions:
       - key: kommander.d2iq.io/cluster-name
