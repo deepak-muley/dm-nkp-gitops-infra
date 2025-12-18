@@ -3,4 +3,5 @@ kind: Kustomization
 resources:
   - dm-nkp-gitops-catalog-applications
   - nkp-nutanix-products-catalog-applications
-  - platform-applications
+  # DISABLED: platform-applications (all apps disabled - kube-prometheus-stack, rook-ceph, rook-ceph-cluster)
+  # - platform-applications
