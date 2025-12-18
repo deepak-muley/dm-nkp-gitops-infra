@@ -7,6 +7,7 @@ Utility scripts for managing the NKP GitOps infrastructure.
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | `bootstrap-capk.sh` | Install CAPK for Kubemark clusters | `./scripts/bootstrap-capk.sh mgmt` |
+| `check-cluster-health.sh` | Check health of all NKP clusters | `./scripts/check-cluster-health.sh` |
 | `check-violations.sh` | Check Gatekeeper policy violations | `./scripts/check-violations.sh mgmt` |
 | `migrate-to-new-structure.sh` | Migrate repo structure safely | `./scripts/migrate-to-new-structure.sh` |
 
@@ -87,6 +88,98 @@ Once CAPK is installed, enable Kubemark cluster creation:
 
 | Shortcut | Kubeconfig Path |
 |----------|-----------------|
+| `mgmt` | `/Users/deepak.muley/ws/nkp/dm-nkp-mgmt-1.conf` |
+| `workload1` | `/Users/deepak.muley/ws/nkp/dm-nkp-workload-1.kubeconfig` |
+| `workload2` | `/Users/deepak.muley/ws/nkp/dm-nkp-workload-2.kubeconfig` |
+
+---
+
+## check-cluster-health.sh
+
+Comprehensive health check for all NKP clusters (management and workload). Checks:
+- Node status (Ready/NotReady)
+- Pod health (Failed, Pending, CrashLoopBackOff, ImagePullBackOff)
+- Flux Kustomizations status
+- Flux HelmReleases status
+- Flux GitRepositories status
+
+### Usage
+
+```bash
+# Check all clusters (mgmt, workload1, workload2)
+./scripts/check-cluster-health.sh
+
+# Check specific cluster(s)
+./scripts/check-cluster-health.sh mgmt
+./scripts/check-cluster-health.sh workload1 workload2
+
+# Summary only (no detailed problem lists)
+./scripts/check-cluster-health.sh --summary
+
+# Watch mode (refresh every 30 seconds)
+./scripts/check-cluster-health.sh --watch
+
+# Watch with custom interval
+./scripts/check-cluster-health.sh --watch --interval 60
+
+# Combine options
+./scripts/check-cluster-health.sh --summary mgmt workload1
+
+# Help
+./scripts/check-cluster-health.sh --help
+```
+
+### Command Options
+
+| Option | Description |
+|--------|-------------|
+| `--summary, -s` | Show only summary table (no detailed problem lists) |
+| `--watch, -w` | Continuously monitor (refreshes every 30s) |
+| `--interval, -i N` | Set watch interval to N seconds (default: 30) |
+| `--help, -h` | Show help message |
+
+### Sample Output
+
+```
+╔══════════════════════════════════════════════════════════════════╗
+║           NKP CLUSTER HEALTH CHECK                               ║
+║           2024-12-17 10:30:45                                    ║
+╚══════════════════════════════════════════════════════════════════╝
+
+════════════════════════════════════════════════════════════════
+  OVERALL HEALTH SUMMARY
+════════════════════════════════════════════════════════════════
+
+Cluster      | Nodes  | Pods   | KS   | HR   | GR   | HCP  | HRP  | AD   | ADI
+-------------|--------|--------|------|------|------|------|------|------|-----
+mgmt         | ✓      | ✓      | ✓    | ✓    | ✓    | ✓    | ✓    | ✓    | ✓
+workload1    | ✓      | ✗      | ✓    | ✓    | ✓    | -    | -    | -    | -
+workload2    | ✓      | ✓      | ✗    | ✓    | ✓    | -    | -    | -    | -
+
+Legend: ✓ = Healthy, ✗ = Issues, - = N/A or Not Installed
+
+Columns: KS=Kustomizations, HR=HelmReleases, GR=GitRepos, HCP=HelmChartProxies, HRP=HelmReleaseProxies,
+         AD=AppDeployments, ADI=AppDeploymentInstances (HCP, HRP, AD, ADI are management cluster only)
+```
+
+### What It Checks
+
+| Category | What's Checked | Clusters |
+|----------|----------------|----------|
+| **Nodes** | All nodes should be in Ready state | All |
+| **Pods** | No Failed, Error, Pending, CrashLoopBackOff, or ImagePullBackOff pods | All |
+| **Kustomizations (KS)** | All Flux Kustomizations should have Ready=True | All |
+| **HelmReleases (HR)** | All Flux HelmReleases should have Ready=True | All |
+| **GitRepositories (GR)** | All Flux GitRepositories should have Ready=True | All |
+| **HelmChartProxies (HCP)** | All CAPI HelmChartProxies should have Ready=True | mgmt only |
+| **HelmReleaseProxies (HRP)** | All CAPI HelmReleaseProxies should have Ready=True | mgmt only |
+| **AppDeployments (AD)** | All Kommander AppDeployments should be synced to target clusters | mgmt only |
+| **AppDeploymentInstances (ADI)** | All Kommander AppDeploymentInstances should have KustomizationReady=True and KustomizationHealthy=True | mgmt only |
+
+### Kubeconfig Locations
+
+| Cluster | Kubeconfig Path |
+|---------|-----------------|
 | `mgmt` | `/Users/deepak.muley/ws/nkp/dm-nkp-mgmt-1.conf` |
 | `workload1` | `/Users/deepak.muley/ws/nkp/dm-nkp-workload-1.kubeconfig` |
 | `workload2` | `/Users/deepak.muley/ws/nkp/dm-nkp-workload-2.kubeconfig` |
