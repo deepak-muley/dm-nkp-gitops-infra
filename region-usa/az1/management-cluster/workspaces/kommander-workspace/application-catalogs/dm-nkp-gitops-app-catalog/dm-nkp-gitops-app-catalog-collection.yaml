@@ -15,4 +15,3 @@ spec:
   timeout: 1m0s
   url: oci://ghcr.io/deepak-muley/nkp-custom-apps-catalog/dm-nkp-gitops-app-catalog/collection
 status: {}
-

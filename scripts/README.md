@@ -10,6 +10,7 @@ Utility scripts for managing the NKP GitOps infrastructure.
 | `bootstrap-sealed-secrets-key-crs.sh` | Deploy sealed-secrets key via ClusterResourceSet | `./scripts/bootstrap-sealed-secrets-key-crs.sh` |
 | `check-cluster-health.sh` | Check health of all NKP clusters | `./scripts/check-cluster-health.sh` |
 | `check-violations.sh` | Check Gatekeeper policy violations | `./scripts/check-violations.sh mgmt` |
+| `list-clusterapps-and-apps.sh` | List all ClusterApp and App CRs grouped by type | `./scripts/list-clusterapps-and-apps.sh` |
 | `migrate-to-new-structure.sh` | Migrate repo structure safely | `./scripts/migrate-to-new-structure.sh` |
 
 ---
@@ -452,6 +453,182 @@ kubectl get constraints -o json | jq -r '
 | Exact resource name | `select(.name == "my-pod-xyz")` |
 | Resource kind | `select(.kind == "Ingress")` |
 | Combine filters | `select(.namespace == "X" and .kind == "Y")` |
+
+---
+
+## list-clusterapps-and-apps.sh
+
+List all ClusterApp and App custom resources from the management cluster, grouped by type with display names and scope information. Features beautiful colored terminal output and powerful filtering options.
+
+### Usage
+
+```bash
+# Set kubeconfig to management cluster
+export KUBECONFIG=/Users/deepak.muley/ws/nkp/dm-nkp-mgmt-1.conf
+
+# List all resources
+./scripts/list-clusterapps-and-apps.sh
+
+# Filter by kind
+./scripts/list-clusterapps-and-apps.sh --kind ClusterApp
+./scripts/list-clusterapps-and-apps.sh --kind App
+
+# Filter by scope
+./scripts/list-clusterapps-and-apps.sh --scope workspace
+./scripts/list-clusterapps-and-apps.sh --scope project
+
+# Search by name (partial match, case-insensitive)
+./scripts/list-clusterapps-and-apps.sh --name insights
+./scripts/list-clusterapps-and-apps.sh --name kserve
+
+# Filter by namespace (for App resources)
+./scripts/list-clusterapps-and-apps.sh --namespace kommander-default-workspace
+
+  # Filter by type
+  ./scripts/list-clusterapps-and-apps.sh --type nkp-core-platform
+  ./scripts/list-clusterapps-and-apps.sh --type custom
+
+  # Filter by licensing
+  ./scripts/list-clusterapps-and-apps.sh --licensing ultimate
+  ./scripts/list-clusterapps-and-apps.sh --licensing pro
+
+  # Filter by dependencies
+  ./scripts/list-clusterapps-and-apps.sh --dependencies cert-manager
+  ./scripts/list-clusterapps-and-apps.sh --dependencies traefik
+
+  # Check deployment status (AppDeployment and AppDeploymentInstance)
+  ./scripts/list-clusterapps-and-apps.sh --check-deployments
+  ./scripts/list-clusterapps-and-apps.sh --check-deployments --name cert-manager
+  ./scripts/list-clusterapps-and-apps.sh --check-deployments --kind ClusterApp
+
+  # Combine multiple filters
+  ./scripts/list-clusterapps-and-apps.sh --kind App --scope workspace --name kserve
+  ./scripts/list-clusterapps-and-apps.sh --kind ClusterApp --type nkp-core-platform --scope workspace
+  ./scripts/list-clusterapps-and-apps.sh --licensing ultimate --dependencies cert-manager
+  ./scripts/list-clusterapps-and-apps.sh --check-deployments --name cert-manager --scope workspace
+
+  # Show only summary statistics
+  ./scripts/list-clusterapps-and-apps.sh --summary
+
+  # Disable colored output
+  ./scripts/list-clusterapps-and-apps.sh --no-color
+
+  # Show help
+  ./scripts/list-clusterapps-and-apps.sh --help
+```
+
+### Command Options
+
+| Option | Description |
+|--------|-------------|
+| `--kind KIND` | Filter by kind (ClusterApp or App) |
+| `--scope SCOPE` | Filter by scope (workspace or project) |
+| `--name PATTERN` | Filter by name (partial match, case-insensitive) |
+| `--namespace NS` | Filter by namespace (for App resources) |
+| `--type TYPE` | Filter by type (custom, internal, nkp-catalog, nkp-core-platform) |
+| `--licensing PATTERN` | Filter by licensing (partial match, e.g., "pro", "ultimate") |
+| `--dependencies PATTERN` | Filter by dependencies (partial match, e.g., "cert-manager") |
+| `--check-deployments` | Show AppDeployment status and cluster deployment information |
+| `--no-color` | Disable colored output |
+| `--summary` | Show only summary statistics (no detailed tables) |
+| `-h, --help` | Show help message |
+
+### Requirements
+
+- `kubectl` - Must be installed and configured
+- `jq` - JSON processor (install via `brew install jq` on macOS)
+- `KUBECONFIG` environment variable set to management cluster kubeconfig
+
+### Output
+
+The script generates beautifully formatted tables with color-coded output:
+
+- **Blue** - ClusterApp resources
+- **Green** - App resources
+- **Yellow** - Workspace scope
+- **Magenta** - Project scope
+- **Cyan** - Section headers
+
+Tables are grouped by application type:
+
+- **custom** - Custom applications
+- **internal** - Internal Kommander applications
+- **nkp-catalog** - Applications from NKP catalog
+- **nkp-core-platform** - Core NKP platform applications
+
+Each table includes:
+- **Kind** - ClusterApp or App (color-coded)
+- **Name** - Resource name
+- **Version** - Application version
+- **Display Name** - Human-readable name from annotations
+- **Scope** - Workspace or project scope (color-coded)
+- **Type** - Application type (custom, internal, nkp-catalog, nkp-core-platform)
+- **Licensing** - Required licensing tiers (e.g., "pro,ultimate,essential,enterprise")
+- **Dependencies** - Required dependencies (e.g., "cert-manager", "traefik")
+
+When using `--check-deployments`, additional deployment information is shown:
+- **Enabled Status** - Whether an AppDeployment exists (✓ Enabled or ○ Not enabled)
+- **Target Clusters** - List of clusters where the app is configured to be deployed
+- **Deployment Status** - Summary of healthy/total instances (e.g., "2/2 Healthy")
+- **Instance Details** - Per-cluster status showing which clusters have successfully deployed instances (✓ = healthy, ○ = not healthy)
+
+The output also includes a summary section with statistics:
+- Total resource count
+- Breakdown by type
+- Breakdown by kind
+- Breakdown by scope
+
+### Sample Output
+
+```
+════════════════════════════════════════════════════════════════
+  ClusterApp and App Resources
+════════════════════════════════════════════════════════════════
+
+Active Filters:
+  Kind: App
+  Scope: workspace
+  Type: nkp-catalog
+
+════════════════════════════════════════════════════════════════
+  Type: nkp-catalog | Kind: App | Count: 5
+════════════════════════════════════════════════════════════════
+
+┌─────────────┬──────────────────────────────────────────┬─────────────┬──────────────────────────────────────┬────────────┬──────────────────────────────────────┬──────────────────────────────────────┐
+│ Kind        │ Name                                     │ Version     │ Display Name                         │ Scope      │ Licensing                            │ Dependencies                         │
+├─────────────┼──────────────────────────────────────────┼─────────────┼──────────────────────────────────────┼────────────┼──────────────────────────────────────┼──────────────────────────────────────┤
+│ App         │ envoy-gateway-1.5.0                      │ 1.5.0       │ Envoy Gateway                        │ workspace  │ pro,ultimate,Essential,Enterprise    │ cert-manager                         │
+│ App         │ kserve-0.15.0                            │ 0.15.0      │ Kserve                               │ workspace  │ pro,ultimate,Essential,Enterprise    │ cert-manager                         │
+...
+└─────────────┴──────────────────────────────────────────┴─────────────┴──────────────────────────────────────┴────────────┴──────────────────────────────────────┴──────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════
+  Summary Statistics
+════════════════════════════════════════════════════════════════
+
+Total Resources: 5
+
+By Type:
+  nkp-catalog         :   5
+
+By Kind:
+  App                 :   5
+
+By Scope:
+  workspace           :   5
+```
+
+### Use Cases
+
+- **Audit applications** - See all available ClusterApps and Apps with beautiful formatting
+- **Version tracking** - Check versions of deployed applications
+- **Scope analysis** - Understand which apps are workspace vs project scoped
+- **Type categorization** - Group applications by their type (custom, internal, catalog, platform)
+- **Quick searches** - Find specific applications by name pattern
+- **Namespace filtering** - See which Apps are in specific namespaces
+- **Licensing analysis** - Find apps by required licensing tiers
+- **Dependency tracking** - Identify apps that require specific dependencies (e.g., cert-manager, traefik)
+- **Reporting** - Generate summary statistics for documentation
 
 ---
 
