@@ -2,6 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   # Applications from dm-nkp-gitops-app-catalog for management cluster
-  - dm-nkp-gitops-catalog-applications
-  # Platform applications for management cluster
-  - platform-applications
+  - kyverno
+  - kubescape-operator
+  - kro

@@ -6,4 +6,5 @@ resources:
   - kyverno
   - vault
   - kubescape-operator
+  - kro
 
