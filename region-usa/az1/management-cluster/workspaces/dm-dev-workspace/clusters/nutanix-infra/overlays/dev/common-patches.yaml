@@ -1,0 +1,63 @@
+# Common Patches - Apply to ALL clusters in dev environment
+#
+# TO UPDATE DURING UPGRADES:
+# 1. Update image.name below for all clusters (single value applies to all)
+# 2. Update k8s version if needed (add version patch below)
+#
+# This file contains the patch operations that apply to ALL clusters.
+# The target (kind: Cluster) is specified in kustomization.yaml
+
+# Image name patches
+- op: replace
+  path: /spec/topology/variables/0/value/controlPlane/nutanix/machineDetails/image/name
+  value: nkp-rocky-9.6-release-1.34.1-20251225180234
+- op: replace
+  path: /spec/topology/workers/machineDeployments/0/variables/overrides/0/value/nutanix/machineDetails/image/name
+  value: nkp-rocky-9.6-release-1.34.1-20251225180234
+
+# K8s version patch
+- op: replace
+  path: /spec/topology/version
+  value: v1.34.1
+
+# Cluster class patch
+- op: replace
+  path: /spec/topology/class
+  value: nkp-nutanix-v2.17.0
+
+# Worker replicas patch
+- op: add
+  path: /spec/topology/workers/machineDeployments/0/replicas
+  value: 3
+
+# Remove autoscaler annotations
+- op: remove
+  path: /spec/topology/workers/machineDeployments/0/metadata/annotations/cluster.x-k8s.io~1cluster-api-autoscaler-node-group-max-size
+- op: remove
+  path: /spec/topology/workers/machineDeployments/0/metadata/annotations/cluster.x-k8s.io~1cluster-api-autoscaler-node-group-min-size
+
+# Secret reference patches - Update to use common dev secrets
+# CCM credentials
+- op: replace
+  path: /spec/topology/variables/0/value/addons/ccm/credentials/secretRef/name
+  value: dm-dev-pc-credentials
+
+# CSI credentials
+- op: replace
+  path: /spec/topology/variables/0/value/addons/csi/providers/nutanix/credentials/secretRef/name
+  value: dm-dev-pc-credentials-for-csi
+
+# Konnector Agent credentials
+- op: replace
+  path: /spec/topology/variables/0/value/addons/konnectorAgent/credentials/secretRef/name
+  value: dm-dev-pc-credentials-for-konnector-agent
+
+# Image registry credentials
+- op: replace
+  path: /spec/topology/variables/0/value/imageRegistries/0/credentials/secretRef/name
+  value: dm-dev-image-registry-credentials
+
+# Prism Central endpoint credentials
+- op: replace
+  path: /spec/topology/variables/0/value/nutanix/prismCentralEndpoint/credentials/secretRef/name
+  value: dm-dev-pc-credentials

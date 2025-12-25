@@ -1,0 +1,56 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../bases
+  # Kubemark hollow machines moved to docker-infra for CAPD cluster testing
+
+# ============================================================================
+# UPGRADE INSTRUCTIONS
+# ============================================================================
+# To update image name for ALL clusters:
+#   1. Edit common-patches.yaml
+#   2. Update the image name value (applies to all clusters automatically!)
+#   3. Current value: nkp-rocky-9.6-release-1.34.1-20251225180234
+#
+# To update k8s version for ALL clusters:
+#   1. Edit common-patches.yaml
+#   2. Uncomment and update the version patch (applies to all clusters automatically!)
+#
+# To update a SPECIFIC cluster:
+#   1. Edit cluster-specific-patches/dm-nkp-workload-N.yaml
+#   2. Modify only that cluster's patches
+# ============================================================================
+
+patches:
+  # ========================================================================
+  # COMMON PATCHES - Apply to ALL clusters
+  # ========================================================================
+  # These patches are loaded from common-patches.yaml
+  # Update image name and k8s version in that file for all clusters
+  # ========================================================================
+  - target:
+      kind: Cluster
+    path: common-patches.yaml
+
+  # ========================================================================
+  # CLUSTER-SPECIFIC PATCHES - Unique to each cluster
+  # ========================================================================
+  # These patches are loaded from cluster-specific-patches/ directory
+  # Each cluster has its own file with unique configuration
+  # ========================================================================
+  - target:
+      kind: Cluster
+      name: dm-nkp-workload-1
+    path: cluster-specific-patches/dm-nkp-workload-1.yaml
+
+  - target:
+      kind: Cluster
+      name: dm-nkp-workload-2
+    path: cluster-specific-patches/dm-nkp-workload-2.yaml
+
+  # Add new cluster-specific patch files here as you add clusters:
+  # - target:
+  #     kind: Cluster
+  #     name: dm-nkp-workload-3
+  #   path: cluster-specific-patches/dm-nkp-workload-3.yaml

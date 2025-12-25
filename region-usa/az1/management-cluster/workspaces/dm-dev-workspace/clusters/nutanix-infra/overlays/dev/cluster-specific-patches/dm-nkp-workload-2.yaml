@@ -1,0 +1,10 @@
+# Cluster-specific patches for dm-nkp-workload-2
+# These patches are unique to this cluster and don't apply to others
+# The target (kind: Cluster, name: dm-nkp-workload-2) is specified in kustomization.yaml
+#
+# Currently no cluster-specific patches needed.
+# Add patches here if this cluster needs unique configuration.
+# Example:
+# - op: replace
+#   path: /spec/topology/workers/machineDeployments/0/replicas
+#   value: 5
