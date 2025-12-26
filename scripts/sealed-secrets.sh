@@ -676,8 +676,22 @@ EOF
     echo ""
 
     # Re-encrypt each secret
-    PC_CREDS_JSON=$(echo -n "{\"username\":\"$PC_USERNAME\",\"password\":\"$PC_PASSWORD\",\"endpoint\":\"$PC_ENDPOINT\"}" | base64)
-    CSI_KEY=$(echo -n "$PC_USERNAME:$PC_PASSWORD" | base64)
+    # PC credentials must be in the format expected by Nutanix Cluster API:
+    # [{"type": "basic_auth", "data": {"prismCentral": {"username": "...", "password": "..."}}}]
+    # Use pretty-printed JSON format to match working workload cluster
+    PC_CREDS_JSON=$(echo '[
+    {
+        "type": "basic_auth",
+        "data": {
+            "prismCentral": {
+                "username": "'"$PC_USERNAME"'",
+                "password": "'"$PC_PASSWORD"'"
+            }
+        }
+    }
+]' | base64)
+    # CSI credentials format: pc.dev.nkp.sh:9440:username:password
+    CSI_KEY=$(echo -n "$PC_ENDPOINT:$PC_PORT:$PC_USERNAME:$PC_PASSWORD" | base64)
 
     for secret_info in \
         "dm-dev-pc-credentials:--from-literal=credentials=$PC_CREDS_JSON" \
@@ -739,19 +753,19 @@ EOF
             echo "---"
             kubectl get sealedsecret dm-dev-pc-credentials -n "$NAMESPACE" -o yaml | \
                 grep -v "creationTimestamp\|resourceVersion\|uid\|generation\|last-applied-configuration\|status:" | \
-                sed '/^status:/,$d'
+                sed '/^status:/,$d' | sed '/^  conditions:/,/^  observedGeneration:/d' | sed '/^  observedGeneration:/d'
             echo "---"
             kubectl get sealedsecret dm-dev-pc-credentials-for-csi -n "$NAMESPACE" -o yaml | \
                 grep -v "creationTimestamp\|resourceVersion\|uid\|generation\|last-applied-configuration\|status:" | \
-                sed '/^status:/,$d'
+                sed '/^status:/,$d' | sed '/^  conditions:/,/^  observedGeneration:/d' | sed '/^  observedGeneration:/d'
             echo "---"
             kubectl get sealedsecret dm-dev-pc-credentials-for-konnector-agent -n "$NAMESPACE" -o yaml | \
                 grep -v "creationTimestamp\|resourceVersion\|uid\|generation\|last-applied-configuration\|status:" | \
-                sed '/^status:/,$d'
+                sed '/^status:/,$d' | sed '/^  conditions:/,/^  observedGeneration:/d' | sed '/^  observedGeneration:/d'
             echo "---"
             kubectl get sealedsecret dm-dev-image-registry-credentials -n "$NAMESPACE" -o yaml | \
                 grep -v "creationTimestamp\|resourceVersion\|uid\|generation\|last-applied-configuration\|status:" | \
-                sed '/^status:/,$d'
+                sed '/^status:/,$d' | sed '/^  conditions:/,/^  observedGeneration:/d' | sed '/^  observedGeneration:/d'
         } > "$SECRETS_FILE"
 
         echo -e "${GREEN}✓ Updated: $SECRETS_FILE${NC}"
