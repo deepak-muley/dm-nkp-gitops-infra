@@ -5,7 +5,8 @@ resources:
   - nutanix-infra/overlays/dev
 
   # Docker Infrastructure Clusters (CAPD + Kubemark)
-  - docker-infra
+  # Temporarily disabled - requires CAPK to be installed first
+  # - docker-infra
 
   # NOTE: ClusterResourceSets for NDK/NAI are now in their respective app folders:
   # - applications/nkp-nutanix-products-catalog-applications/ndk/
