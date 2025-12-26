@@ -11,6 +11,9 @@ region-usa/az1/_common/policies/gatekeeper/SECURITY-ROADMAP.md
 **/sealed-secrets-key*.yml
 **/*-sealed-secrets-key.yaml
 **/*-sealed-secrets-key.yml
+# Sealed-secrets public keys (also protect these)
+**/sealed-secrets-public-key*.pem
+**/*-sealed-secrets-public-key.pem
 
 # Generic private key patterns (allow public keys)
 **/*.key

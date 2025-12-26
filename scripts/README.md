@@ -6,6 +6,7 @@ Utility scripts for managing the NKP GitOps infrastructure.
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
+| `sealed-secrets.sh` | Unified sealed-secrets management (backup, restore, encrypt, decrypt, re-encrypt, status) | `./scripts/sealed-secrets.sh <command>` |
 | `bootstrap-capk.sh` | Install CAPK for Kubemark clusters | `./scripts/bootstrap-capk.sh mgmt` |
 | `bootstrap-sealed-secrets-key-crs.sh` | Deploy sealed-secrets key via ClusterResourceSet | `./scripts/bootstrap-sealed-secrets-key-crs.sh` |
 | `check-cluster-health.sh` | Check health of all NKP clusters | `./scripts/check-cluster-health.sh` |
@@ -712,4 +713,131 @@ kubectl apply -f region-usa/az1/workload-clusters/dm-nkp-workload-1/bootstrap.ya
 # dm-nkp-workload-2
 export KUBECONFIG=/Users/deepak.muley/ws/nkp/dm-nkp-workload-2.kubeconfig
 kubectl apply -f region-usa/az1/workload-clusters/dm-nkp-workload-2/bootstrap.yaml
+```
+
+---
+
+## sealed-secrets.sh
+
+Unified script for managing sealed-secrets operations: backup, restore, encrypt, decrypt, re-encrypt, and status checking.
+
+### Why Is This Needed?
+
+Sealed-secrets keys are critical for decrypting sealed secrets. This unified script provides all necessary operations:
+- **Backup**: Save keys for disaster recovery
+- **Restore**: Restore keys from backup
+- **Encrypt**: Create new sealed secrets
+- **Decrypt**: View plaintext secrets (requires keys)
+- **Re-encrypt**: Fix decryption failures by re-encrypting with current keys
+- **Status**: Check sealed secret sync status
+
+### Security
+
+⚠️ **IMPORTANT**: Both public and private keys are stored locally and NEVER committed to git. They are stored in:
+```
+/Users/deepak.muley/ws/nkp/sealed-secrets-key-backup.yaml (private keys)
+/Users/deepak.muley/ws/nkp/sealed-secrets-public-key.pem (public key)
+```
+
+These locations are protected by `.gitignore` patterns.
+
+### Usage
+
+```bash
+# Show help
+./scripts/sealed-secrets.sh --help
+
+# Backup keys
+./scripts/sealed-secrets.sh backup
+
+# Restore keys
+./scripts/sealed-secrets.sh restore
+
+# Encrypt a secret
+./scripts/sealed-secrets.sh encrypt -f secret.yaml -o sealed-secret.yaml
+
+# Decrypt a sealed secret (requires keys)
+./scripts/sealed-secrets.sh decrypt -f sealed-secret.yaml -o secret.yaml
+
+# Re-encrypt secrets with current credentials
+./scripts/sealed-secrets.sh re-encrypt
+
+# Check status of sealed secrets
+./scripts/sealed-secrets.sh status
+```
+
+### Commands
+
+#### Backup
+
+Backup sealed-secrets controller keys (public & private):
+
+```bash
+./scripts/sealed-secrets.sh backup
+./scripts/sealed-secrets.sh backup -k /path/to/kubeconfig
+./scripts/sealed-secrets.sh backup --help
+```
+
+#### Restore
+
+Restore sealed-secrets keys from backup:
+
+```bash
+./scripts/sealed-secrets.sh restore
+./scripts/sealed-secrets.sh restore -b /path/to/backup.yaml
+./scripts/sealed-secrets.sh restore --force
+./scripts/sealed-secrets.sh restore --help
+```
+
+#### Encrypt
+
+Encrypt a plaintext Kubernetes Secret:
+
+```bash
+./scripts/sealed-secrets.sh encrypt -f secret.yaml -o sealed-secret.yaml
+./scripts/sealed-secrets.sh encrypt -f secret.yaml -n my-namespace -o sealed-secret.yaml
+./scripts/sealed-secrets.sh encrypt --help
+```
+
+#### Decrypt
+
+Decrypt a SealedSecret (requires private keys):
+
+```bash
+./scripts/sealed-secrets.sh decrypt -f sealed-secret.yaml -o secret.yaml
+./scripts/sealed-secrets.sh decrypt -f sealed-secret.yaml -b /path/to/backup.yaml -o secret.yaml
+./scripts/sealed-secrets.sh decrypt --help
+```
+
+#### Re-encrypt
+
+Re-encrypt secrets with new credentials. Automatically reads credentials from:
+- PC credentials: `/Users/deepak.muley/ws/nkp/pc-creds.sh`
+- DockerHub credentials: `/Users/deepak.muley/ws/nkp/nkp-mgmt-clusterctl.sh`
+
+```bash
+./scripts/sealed-secrets.sh re-encrypt
+./scripts/sealed-secrets.sh re-encrypt -n dm-dev-workspace
+./scripts/sealed-secrets.sh re-encrypt --help
+```
+
+This command:
+1. Reads PC and DockerHub credentials from local files
+2. Re-encrypts all 4 secrets using the current controller's public key:
+   - `dm-dev-pc-credentials` (Prism Central JSON format)
+   - `dm-dev-image-registry-credentials` (DockerHub)
+   - `dm-dev-pc-credentials-for-csi` (Prism Central for CSI)
+   - `dm-dev-pc-credentials-for-konnector-agent` (Prism Central for Konnector)
+3. Applies the re-encrypted secrets to the cluster
+4. Verifies they can be decrypted
+5. Updates the sealed secrets file in git
+
+#### Status
+
+Check the sync status of sealed secrets:
+
+```bash
+./scripts/sealed-secrets.sh status
+./scripts/sealed-secrets.sh status -n dm-dev-workspace
+./scripts/sealed-secrets.sh status --help
 ```
