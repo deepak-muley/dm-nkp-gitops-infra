@@ -10,6 +10,6 @@ resources:
   # Gatekeeper policies (OPA-based)
   - flux-ks-gatekeeper.yaml
   # Kyverno policies (Kubernetes-native)
-  # Uncomment to use Kyverno instead of or alongside Gatekeeper
-  # - flux-ks-kyverno.yaml
+  # Note: Both Gatekeeper and Kyverno can run together
+  - flux-ks-kyverno.yaml
 
