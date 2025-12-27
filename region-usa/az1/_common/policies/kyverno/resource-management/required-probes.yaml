@@ -54,13 +54,22 @@ spec:
         message: >-
           A readinessProbe is required for all containers. This determines when the
           container is ready to accept traffic.
-        pattern:
-          spec:
-            containers:
-              - readinessProbe:
-                  httpGet: "*"
-                  | tcpSocket: "*"
-                  | exec: "*"
+        anyOf:
+          - pattern:
+              spec:
+                containers:
+                  - readinessProbe:
+                      httpGet: "*"
+          - pattern:
+              spec:
+                containers:
+                  - readinessProbe:
+                      tcpSocket: "*"
+          - pattern:
+              spec:
+                containers:
+                  - readinessProbe:
+                      exec: "*"
     - name: require-liveness-probe
       match:
         any:
@@ -93,11 +102,20 @@ spec:
         message: >-
           A livenessProbe is required for all containers. This determines when to
           restart a container that is unhealthy.
-        pattern:
-          spec:
-            containers:
-              - livenessProbe:
-                  httpGet: "*"
-                  | tcpSocket: "*"
-                  | exec: "*"
+        anyOf:
+          - pattern:
+              spec:
+                containers:
+                  - livenessProbe:
+                      httpGet: "*"
+          - pattern:
+              spec:
+                containers:
+                  - livenessProbe:
+                      tcpSocket: "*"
+          - pattern:
+              spec:
+                containers:
+                  - livenessProbe:
+                      exec: "*"
 
