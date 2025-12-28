@@ -4,7 +4,6 @@ resources:
   # Dependencies for nkp-insights (deploy these first)
   - kube-prometheus-stack
   - cloudnative-pg
-  - harbor
   # DISABLED: COSI driver (kept in repo but not deployed - using Rook-Ceph instead)
   # - cosi-driver-nutanix
   # NKP Insights (depends on prometheus and cloudnative-pg)
