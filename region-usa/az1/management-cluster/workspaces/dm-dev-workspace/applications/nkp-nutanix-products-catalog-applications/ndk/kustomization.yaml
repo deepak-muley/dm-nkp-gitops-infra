@@ -4,6 +4,5 @@ resources:
   # ClusterResourceSet to deploy NDK secrets to workload clusters (apply first)
   - ndk-workload-cluster-crs.yaml
   # NDK App Deployment
-  - ndk-2.0.0.yaml
-  - ndk-2.0.0-config-overrides.yaml
-
+  - ndk.yaml
+  - ndk-config-overrides.yaml

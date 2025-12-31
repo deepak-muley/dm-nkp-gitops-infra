@@ -1,7 +1,7 @@
 apiVersion: apps.kommander.d2iq.io/v1alpha3
 kind: AppDeployment
 metadata:
-  name: ndk-2.0.0
+  name: ndk
   namespace: dm-dev-workspace
   annotations:
     kustomize.toolkit.fluxcd.io/ssa: merge
@@ -18,4 +18,4 @@ spec:
           - dm-nkp-workload-1
           - dm-nkp-workload-2
   configOverrides:
-    name: ndk-2.0.0-config-overrides
+    name: ndk-config-overrides
