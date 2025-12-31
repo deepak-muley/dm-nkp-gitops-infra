@@ -2,9 +2,9 @@ apiVersion: apps.kommander.d2iq.io/v1alpha3
 kind: AppDeployment
 metadata:
   creationTimestamp: null
-  name: project-grafana-logging
+  name: project-podinfo
   namespace: dm-dev-project
 spec:
   appRef:
-    kind: ClusterApp
-    name: project-grafana-logging-10.1.2
+    kind: App
+    name: podinfo-6.9.4

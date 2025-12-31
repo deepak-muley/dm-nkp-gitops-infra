@@ -1,19 +1,10 @@
 apiVersion: apps.kommander.d2iq.io/v1alpha3
 kind: AppDeployment
 metadata:
+  creationTimestamp: null
   name: project-logging
   namespace: dm-dev-project
 spec:
   appRef:
     kind: ClusterApp
     name: project-logging-1.0.4
-  clusterConfigOverrides:
-    - appVersion: 1.0.4
-      clusterSelector:
-        matchExpressions:
-          - key: kommander.d2iq.io/cluster-name
-            operator: In
-            values:
-              - host-cluster
-      configMapName: ""
-
