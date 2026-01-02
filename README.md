@@ -296,7 +296,7 @@ flux reconcile kustomization clusterops-clusters -n dm-nkp-gitops-infra
                                                      │
                                     ┌────────────────┼────────────────┐
                                     │                │                │
-                                    ▼                ▼                ▼
+                                    ▼                ▼
                      ┌──────────────────┐  ┌──────────────────┐
                      │infrastructure-   │  │gatekeeper-       │
                      │controllers       │  │constraint-       │
@@ -304,6 +304,11 @@ flux reconcile kustomization clusterops-clusters -n dm-nkp-gitops-infra
                      │(sealed-secrets-  │  │                  │
                      │controller)       │  │                  │
                      └────────┬────────┘  └──────┬───────────┘
+                               │                  │
+                               │                  │
+                    ┌──────────┼──────────┐      │
+                    │          │          │      │
+                    ▼          ▼          ▼      ▼
                                │                  │
                                │                  │
                     ┌──────────┼──────────┐      │
