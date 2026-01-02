@@ -306,14 +306,11 @@ flux reconcile kustomization clusterops-clusters -n dm-nkp-gitops-infra
                      └────────┬────────┘  └──────┬───────────┘
                                │                  │
                                │                  │
-                    ┌──────────┼──────────┐      │
-                    │          │          │      │
-                    ▼          ▼          ▼      ▼
                                │                  │
                                │                  │
-                    ┌──────────┼──────────┐      │
-                    │          │          │      │
-                    ▼          ▼          ▼      ▼
+                    ┌──────────┼──────────┐       │
+                    │          │          │       │
+                    ▼          ▼          ▼       ▼
          ┌──────────────┐ ┌────────┐ ┌─────────────────────┐
          │infrastructure│ │kyverno │ │gatekeeper-          │
          │              │ │        │ │constraints          │
