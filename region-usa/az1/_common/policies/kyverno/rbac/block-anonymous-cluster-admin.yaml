@@ -39,20 +39,20 @@ spec:
               conditions:
                 all:
                   - key: "{{ request.object.roleRef.name }}"
-                    operator: Equal
+                    operator: Equals
                     value: cluster-admin
                   - any:
                       - all:
                           - key: "{{ element.kind }}"
-                            operator: Equal
+                            operator: Equals
                             value: User
                           - key: "{{ element.name }}"
-                            operator: Equal
+                            operator: Equals
                             value: system:anonymous
                       - all:
                           - key: "{{ element.kind }}"
-                            operator: Equal
+                            operator: Equals
                             value: Group
                           - key: "{{ element.name }}"
-                            operator: Equal
+                            operator: Equals
                             value: system:unauthenticated
