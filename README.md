@@ -284,6 +284,89 @@ kubectl get kustomization clusterops-clusters -n dm-nkp-gitops-infra \
 flux reconcile kustomization clusterops-clusters -n dm-nkp-gitops-infra
 ```
 
+## Flux Kustomization Dependencies (Workload Clusters)
+
+### Dependency Graph
+
+```
+                                    ┌─────────────────────────────────────┐
+                                    │           Level 0 (Root)            │
+                                    │         No dependencies             │
+                                    └─────────────────────────────────────┘
+                                                     │
+                    ┌────────────────────────────────┼────────────────────────────────┐
+                    │                                │                                │
+                    ▼                                ▼                                ▼
+         ┌──────────────────┐            ┌──────────────────┐            ┌──────────────────────────────┐
+         │infrastructure-   │            │gatekeeper-       │            │                              │
+         │controllers       │            │constraint-       │            │                              │
+         │                  │            │templates         │            │                              │
+         │(sealed-secrets-  │            │                  │            │                              │
+         │controller)       │            │                  │            │                              │
+         └────────┬─────────┘            └──────┬───────────┘            └──────────────────────────────┘
+                  │                             │
+                  │                             │
+        ┌─────────┼─────────┐                  │
+        │         │         │                  │
+        ▼         ▼         ▼                  ▼
+┌───────────┐ ┌──────┐ ┌────────┐    ┌─────────────────────┐
+│infrastructure│ │kyverno│ │        │gatekeeper-          │
+│              │ │       │ │        │constraints          │
+│(depends on:  │ │(depends│ │        │                     │
+│infrastructure│ │on:    │ │        │(depends on:         │
+│-controllers) │ │infra-  │ │        │gatekeeper-          │
+│              │ │struct- │ │        │constraint-          │
+│              │ │ure-    │ │        │templates)           │
+│              │ │control-│ │        │                     │
+│              │ │lers)   │ │        │                     │
+└──────┬───────┘ └────────┘ └────────┘ └─────────────────────┘
+       │
+       │
+       ▼
+┌───────────┐
+│apps       │
+│           │
+│(depends on│
+│infrastructure)│
+└───────────┘
+```
+
+### Dependency Table
+
+| Kustomization | Depends On | What It Deploys |
+|---------------|------------|-----------------|
+| `infrastructure-controllers` | - | Sealed Secrets controller (provides CRDs) |
+| `gatekeeper-constraint-templates` | - | Gatekeeper ConstraintTemplates (policy definitions) |
+| `infrastructure` | infrastructure-controllers | Cluster-specific sealed secrets |
+| `kyverno` | infrastructure-controllers | Kyverno policies + RBAC (from _base/infrastructure/kyverno) |
+| `gatekeeper-constraints` | gatekeeper-constraint-templates | Gatekeeper Constraints (policy instances) |
+| `apps` | infrastructure | Applications deployed in the workload cluster |
+
+### Reconciliation Order
+
+When bootstrapping a fresh workload cluster:
+
+1. **Phase 1** (parallel): `infrastructure-controllers`, `gatekeeper-constraint-templates`
+2. **Phase 2** (parallel): `infrastructure`, `kyverno`, `gatekeeper-constraints`
+3. **Phase 3**: `apps` (waits for infrastructure to be ready)
+
+### Troubleshooting Workload Cluster Dependencies
+
+```bash
+# Set kubeconfig to workload cluster
+export KUBECONFIG=~/.kube/dm-nkp-workload-1.kubeconfig
+
+# Check which kustomizations are blocked
+kubectl get kustomization -n dm-nkp-gitops-workload -o wide
+
+# Check specific dependency status
+kubectl get kustomization infrastructure -n dm-nkp-gitops-workload \
+  -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}'
+
+# Force reconciliation
+flux reconcile kustomization infrastructure -n dm-nkp-gitops-workload
+```
+
 ## Adding a New Region
 
 1. Create region directory structure:
