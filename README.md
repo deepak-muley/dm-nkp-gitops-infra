@@ -294,41 +294,41 @@ flux reconcile kustomization clusterops-clusters -n dm-nkp-gitops-infra
                                     │         No dependencies             │
                                     └─────────────────────────────────────┘
                                                      │
-                    ┌────────────────────────────────┼────────────────────────────────┐
-                    │                                │                                │
-                    ▼                                ▼                                ▼
-         ┌──────────────────┐            ┌──────────────────┐            ┌──────────────────────────────┐
-         │infrastructure-   │            │gatekeeper-       │            │                              │
-         │controllers       │            │constraint-       │            │                              │
-         │                  │            │templates         │            │                              │
-         │(sealed-secrets-  │            │                  │            │                              │
-         │controller)       │            │                  │            │                              │
-         └────────┬─────────┘            └──────┬───────────┘            └──────────────────────────────┘
-                  │                             │
-                  │                             │
-        ┌─────────┼─────────┐                  │
-        │         │         │                  │
-        ▼         ▼         ▼                  ▼
-┌───────────┐ ┌──────┐ ┌────────┐    ┌─────────────────────┐
-│infrastructure│ │kyverno│ │        │gatekeeper-          │
-│              │ │       │ │        │constraints          │
-│(depends on:  │ │(depends│ │        │                     │
-│infrastructure│ │on:    │ │        │(depends on:         │
-│-controllers) │ │infra-  │ │        │gatekeeper-          │
-│              │ │struct- │ │        │constraint-          │
-│              │ │ure-    │ │        │templates)           │
-│              │ │control-│ │        │                     │
-│              │ │lers)   │ │        │                     │
-└──────┬───────┘ └────────┘ └────────┘ └─────────────────────┘
-       │
-       │
-       ▼
-┌───────────┐
-│apps       │
-│           │
-│(depends on│
-│infrastructure)│
-└───────────┘
+                                    ┌────────────────┼────────────────┐
+                                    │                │                │
+                                    ▼                ▼                ▼
+                     ┌──────────────────┐  ┌──────────────────┐
+                     │infrastructure-   │  │gatekeeper-       │
+                     │controllers       │  │constraint-       │
+                     │                  │  │templates         │
+                     │(sealed-secrets-  │  │                  │
+                     │controller)       │  │                  │
+                     └────────┬────────┘  └──────┬───────────┘
+                               │                  │
+                               │                  │
+                    ┌──────────┼──────────┐      │
+                    │          │          │      │
+                    ▼          ▼          ▼      ▼
+         ┌──────────────┐ ┌────────┐ ┌─────────────────────┐
+         │infrastructure│ │kyverno │ │gatekeeper-          │
+         │              │ │        │ │constraints          │
+         │(depends on:  │ │(depends│ │                     │
+         │infrastructure│ │on:     │ │(depends on:         │
+         │-controllers) │ │infra-  │ │gatekeeper-          │
+         │              │ │struct- │ │constraint-          │
+         │              │ │ure-    │ │templates)           │
+         │              │ │control-│ │                     │
+         │              │ │lers)   │ │                     │
+         └──────┬───────┘ └────────┘ └─────────────────────┘
+                │
+                │
+                ▼
+         ┌───────────┐
+         │apps       │
+         │           │
+         │(depends on│
+         │infrastructure)│
+         └───────────┘
 ```
 
 ### Dependency Table
