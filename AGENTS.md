@@ -65,6 +65,8 @@ Level 0 (no dependencies):
   - clusterops-global
   - clusterops-workspaces
   - clusterops-sealed-secrets-controller
+  - clusterops-gatekeeper-constraint-templates
+  - clusterops-kyverno-policies
 
 Level 1 (depends on Level 0):
   - clusterops-workspace-rbac
@@ -72,6 +74,7 @@ Level 1 (depends on Level 0):
   - clusterops-workspace-application-catalogs
   - clusterops-project-definitions
   - clusterops-sealed-secrets
+  - clusterops-gatekeeper-constraints (depends on: gatekeeper-constraint-templates)
 
 Level 2 (depends on Level 1):
   - clusterops-clusters (depends on: workspaces + sealed-secrets)

@@ -181,70 +181,81 @@ metadata:
                                     │         No dependencies             │
                                     └─────────────────────────────────────┘
                                                      │
-                    ┌────────────────────────────────┼────────────────────────────────┐
-                    │                                │                                │
-                    ▼                                ▼                                ▼
-         ┌──────────────────┐            ┌──────────────────┐            ┌──────────────────────────────┐
-         │ clusterops-global│            │clusterops-       │            │clusterops-sealed-secrets-    │
-         │                  │            │workspaces        │            │controller                    │
-         └──────────────────┘            └────────┬─────────┘            └──────────────┬───────────────┘
-                                                  │                                     │
-            ┌─────────────────┬───────────────────┼───────────────────┬─────────────────┤
-            │                 │                   │                   │                 │
-            ▼                 ▼                   ▼                   ▼                 ▼
-   ┌────────────────┐ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐ ┌────────────────────────┐
-   │clusterops-     │ │clusterops-     │ │clusterops-     │ │clusterops-     │ │clusterops-sealed-      │
-   │workspace-rbac  │ │workspace-      │ │workspace-      │ │project-        │ │secrets                 │
-   │                │ │resourcequotas  │ │application-    │ │definitions     │ │                        │
-   │                │ │                │ │catalogs        │ │                │ │(depends on: workspaces │
-   │                │ │                │ │                │ │                │ │+ sealed-secrets-ctrl)  │
-   └────────────────┘ └────────────────┘ └────────────────┘ └───────┬────────┘ └───────────┬────────────┘
-                                                                    │                      │
-                                                                    │          ┌───────────┘
-                                                                    │          │
-                                                                    ▼          ▼
-                                                           ┌─────────────────────────┐
-                                                           │   clusterops-clusters   │
-                                                           │                         │
-                                                           │(depends on: workspaces  │
-                                                           │+ sealed-secrets)        │
-                                                           └────────────┬────────────┘
-                                                                        │
-                                                                        ▼
-                                                           ┌─────────────────────────┐
-                                                           │clusterops-workspace-    │
-                                                           │applications             │
-                                                           │                         │
-                                                           │(depends on: workspaces  │
-                                                           │+ clusters)              │
-                                                           └────────────┬────────────┘
-                                                                        │
-                                                                        │
-                          ┌─────────────────────────────────────────────┘
-                          │
-                          ▼
-             ┌─────────────────────────┐
-             │clusterops-project-      │
-             │applications             │
-             │                         │
-             │(depends on: project-    │
-             │definitions + workspace- │
-             │applications)            │
-             └─────────────────────────┘
+        ┌────────────────────────────────────────────┼────────────────────────────────────────────┐
+        │            │            │            │            │            │            │            │
+        ▼            ▼            ▼            ▼            ▼            ▼            ▼            ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│clusterops- │ │clusterops- │ │clusterops-  │ │clusterops-  │ │clusterops-  │ │clusterops-  │ │clusterops-  │
+│global      │ │workspaces   │ │sealed-      │ │gatekeeper-  │ │kyverno-     │ │             │ │             │
+│            │ │             │ │secrets-     │ │constraint-  │ │policies     │ │             │ │             │
+│            │ │             │ │controller   │ │templates    │ │             │ │             │ │             │
+└────────────┘ └──────┬──────┘ └─────────────┘ └──────┬──────┘ └─────────────┘ └─────────────┘ └─────────────┘
+                      │                               │
+        ┌─────────────┼─────────────┬─────────────────┼─────────────┬─────────────┐
+        │             │             │                 │             │             │
+        ▼             ▼             ▼                 ▼             ▼             ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│clusterops-  │ │clusterops-  │ │clusterops-  │ │clusterops-  │ │clusterops-  │ │clusterops-  │
+│workspace-   │ │workspace-   │ │workspace-   │ │project-     │ │sealed-      │ │gatekeeper-  │
+│rbac         │ │resource-    │ │application- │ │definitions  │ │secrets      │ │constraints  │
+│             │ │quotas       │ │catalogs     │ │             │ │             │ │             │
+│             │ │             │ │             │ │             │ │(depends on: │ │(depends on: │
+│             │ │             │ │             │ │             │ │workspaces + │ │gatekeeper-  │
+│             │ │             │ │             │ │             │ │sealed-      │ │constraint-  │
+│             │ │             │ │             │ │             │ │secrets-ctrl)│ │templates)   │
+└─────────────┘ └─────────────┘ └─────────────┘ └──────┬──────┘ └──────┬──────┘ └─────────────┘
+                                                         │               │
+                                                         │      ┌────────┘
+                                                         │      │
+                                                         ▼      ▼
+                                                  ┌─────────────────────┐
+                                                  │clusterops-clusters   │
+                                                  │                     │
+                                                  │(depends on:         │
+                                                  │workspaces +         │
+                                                  │sealed-secrets)     │
+                                                  └──────────┬──────────┘
+                                                             │
+                                                             ▼
+                                                  ┌─────────────────────┐
+                                                  │clusterops-workspace- │
+                                                  │applications         │
+                                                  │                     │
+                                                  │(depends on:         │
+                                                  │workspaces +         │
+                                                  │clusters)            │
+                                                  └──────────┬──────────┘
+                                                             │
+                                                             │
+                                    ┌────────────────────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │clusterops-project-  │
+                         │applications         │
+                         │                     │
+                         │(depends on:         │
+                         │project-definitions +│
+                         │workspace-           │
+                         │applications)        │
+                         └─────────────────────┘
 ```
 
 ### Dependency Table
 
 | Kustomization | Depends On | What It Deploys |
 |---------------|------------|-----------------|
-| `clusterops-global` | - | VirtualGroups, global policies |
+| `clusterops-global` | - | VirtualGroups, global RBAC |
 | `clusterops-workspaces` | - | Workspace namespace definitions |
 | `clusterops-sealed-secrets-controller` | - | Sealed Secrets controller in `sealed-secrets-system` |
+| `clusterops-gatekeeper-constraint-templates` | - | Gatekeeper ConstraintTemplates (policy definitions) |
+| `clusterops-kyverno-policies` | - | Kyverno ClusterPolicies (security policies) |
 | `clusterops-workspace-rbac` | workspaces | RoleBindings for workspace access |
 | `clusterops-workspace-resourcequotas` | workspaces | ResourceQuotas per workspace |
 | `clusterops-workspace-application-catalogs` | workspaces | Custom application catalogs |
 | `clusterops-project-definitions` | workspaces | Project namespace definitions |
 | `clusterops-sealed-secrets` | workspaces, sealed-secrets-controller | SealedSecrets for cluster credentials |
+| `clusterops-gatekeeper-constraints` | gatekeeper-constraint-templates | Gatekeeper Constraints (policy instances) |
 | `clusterops-clusters` | workspaces, sealed-secrets | CAPI Cluster CRs (Nutanix, CAPD, etc.) |
 | `clusterops-workspace-applications` | workspaces, clusters | Platform applications (via AppDeployments) |
 | `clusterops-project-applications` | project-definitions, workspace-applications | Project-scoped applications |
@@ -253,8 +264,8 @@ metadata:
 
 When bootstrapping a fresh management cluster:
 
-1. **Phase 1** (parallel): `global`, `workspaces`, `sealed-secrets-controller`
-2. **Phase 2** (parallel): `workspace-rbac`, `workspace-resourcequotas`, `workspace-application-catalogs`, `project-definitions`, `sealed-secrets`
+1. **Phase 1** (parallel): `global`, `workspaces`, `sealed-secrets-controller`, `gatekeeper-constraint-templates`, `kyverno-policies`
+2. **Phase 2** (parallel): `workspace-rbac`, `workspace-resourcequotas`, `workspace-application-catalogs`, `project-definitions`, `sealed-secrets`, `gatekeeper-constraints`
 3. **Phase 3**: `clusters` (waits for secrets to be decrypted)
 4. **Phase 4**: `workspace-applications` (waits for clusters to exist)
 5. **Phase 5**: `project-applications` (waits for workspace apps)
