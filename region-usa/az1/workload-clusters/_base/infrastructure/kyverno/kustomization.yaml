@@ -1,5 +1,6 @@
-# Workload Cluster Kyverno Policies
+# Workload Cluster Kyverno Configuration
 # References shared policies from _common/policies/kyverno
+# Includes RBAC for generate rules
 #
 # Note: This kustomization file enables workload clusters to use the same
 # shared Kyverno policies as the management cluster without duplication.
@@ -10,6 +11,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
+  # RBAC for Kyverno background controller (required for generate rules)
+  - rbac/
   # Reference all shared Kyverno policies
   - ../../../../_common/policies/kyverno/
 

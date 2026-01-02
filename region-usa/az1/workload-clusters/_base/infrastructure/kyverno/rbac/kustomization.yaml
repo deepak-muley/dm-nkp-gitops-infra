@@ -1,0 +1,8 @@
+# Kyverno Background Controller RBAC for Workload Clusters
+# This RBAC is required on each workload cluster where Kyverno is installed
+# and where policies with generate rules (like add-pdb-for-ha-deployments) are applied.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - kyverno-background-controller-rbac.yaml
+

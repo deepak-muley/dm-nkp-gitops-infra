@@ -5,4 +5,6 @@ resources:
   - virtualgroups.yaml
   # Global-level role bindings
   - global-admin-rolebinding.yaml
+  # Kyverno background controller RBAC (for generate rules)
+  - kyverno-background-controller-rbac.yaml
 
