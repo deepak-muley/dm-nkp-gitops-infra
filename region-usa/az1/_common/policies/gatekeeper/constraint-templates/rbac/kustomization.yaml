@@ -5,5 +5,6 @@ resources:
   - block-default-sa.yaml
   - block-wildcard-rbac.yaml
   - block-cluster-admin.yaml
+  - block-anonymous-cluster-admin.yaml
   - block-automount-sa-token.yaml
 

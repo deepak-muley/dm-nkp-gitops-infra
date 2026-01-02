@@ -1,0 +1,41 @@
+# Block Anonymous User from Cluster Admin
+# CRITICAL: Prevents system:anonymous or system:unauthenticated from cluster-admin
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sblockanonymousclusteradmin
+  annotations:
+    description: >-
+      CRITICAL SECURITY POLICY: Blocks ClusterRoleBindings that grant cluster-admin
+      privileges to system:anonymous user or system:unauthenticated group.
+      This is a severe security risk and must never be allowed.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sBlockAnonymousClusterAdmin
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sblockanonymousclusteradmin
+
+        # Block anonymous user from cluster-admin
+        violation[{"msg": msg}] {
+          input.review.object.kind == "ClusterRoleBinding"
+          input.review.object.roleRef.name == "cluster-admin"
+          subject := input.review.object.subjects[_]
+          subject.kind == "User"
+          subject.name == "system:anonymous"
+          msg := "CRITICAL: Binding system:anonymous user to cluster-admin is NEVER allowed. This is a severe security risk."
+        }
+
+        # Block unauthenticated group from cluster-admin
+        violation[{"msg": msg}] {
+          input.review.object.kind == "ClusterRoleBinding"
+          input.review.object.roleRef.name == "cluster-admin"
+          subject := input.review.object.subjects[_]
+          subject.kind == "Group"
+          subject.name == "system:unauthenticated"
+          msg := "CRITICAL: Binding system:unauthenticated group to cluster-admin is NEVER allowed. This is a severe security risk."
+        }
+

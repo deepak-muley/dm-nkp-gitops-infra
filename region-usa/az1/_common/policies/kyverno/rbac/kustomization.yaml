@@ -5,6 +5,8 @@ kind: Kustomization
 resources:
   # Critical - Block cluster-admin bindings
   - block-cluster-admin.yaml
+  # Critical - Block anonymous/unauthenticated from cluster-admin (ENFORCED)
+  - block-anonymous-cluster-admin.yaml
   # Critical - Block wildcard (*) in RBAC
   - block-wildcard-rbac.yaml
   # High - Block default ServiceAccount usage

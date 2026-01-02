@@ -1,0 +1,16 @@
+# Block Anonymous User from Cluster Admin Constraint
+# CRITICAL: NEVER allow anonymous/unauthenticated access to cluster-admin
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sBlockAnonymousClusterAdmin
+metadata:
+  name: block-anonymous-cluster-admin
+  labels:
+    policy-category: rbac
+    policy-severity: critical
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["rbac.authorization.k8s.io"]
+        kinds: ["ClusterRoleBinding"]
+

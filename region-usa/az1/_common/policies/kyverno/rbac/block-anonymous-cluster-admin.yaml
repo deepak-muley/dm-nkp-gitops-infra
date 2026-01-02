@@ -1,0 +1,59 @@
+# Block Anonymous User from Cluster Admin
+# Reference: https://kyverno.io/policies/best-practices/
+# CRITICAL: NEVER allow system:anonymous or system:unauthenticated to cluster-admin
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: block-anonymous-cluster-admin
+  annotations:
+    policies.kyverno.io/title: Block Anonymous User from Cluster Admin
+    policies.kyverno.io/category: Security
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: ClusterRoleBinding, RBAC
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      CRITICAL SECURITY POLICY: The system:anonymous user and system:unauthenticated
+      group represent unauthenticated access to the Kubernetes API. Granting
+      cluster-admin privileges to these subjects is a severe security risk and must
+      NEVER be allowed. This policy ENFORCES a hard block (deny) on any attempt to
+      bind system:anonymous or system:unauthenticated to the cluster-admin role.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: block-anonymous-user-cluster-admin
+      match:
+        any:
+          - resources:
+              kinds:
+                - ClusterRoleBinding
+      validate:
+        message: >-
+          CRITICAL: Binding system:anonymous user or system:unauthenticated group
+          to cluster-admin is NEVER allowed. This is a severe security risk.
+          Request denied.
+        foreach:
+          - list: "request.object.subjects[]"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ request.object.roleRef.name }}"
+                    operator: Equals
+                    value: cluster-admin
+                  - any:
+                      - all:
+                          - key: "{{ element.kind }}"
+                            operator: Equals
+                            value: User
+                          - key: "{{ element.name }}"
+                            operator: Equals
+                            value: system:anonymous
+                      - all:
+                          - key: "{{ element.kind }}"
+                            operator: Equals
+                            value: Group
+                          - key: "{{ element.name }}"
+                            operator: Equals
+                            value: system:unauthenticated
+
