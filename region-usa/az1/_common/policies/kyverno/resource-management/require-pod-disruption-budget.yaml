@@ -91,6 +91,7 @@ spec:
                 - capi-system
                 - capi-kubeadm-bootstrap-system
                 - capi-kubeadm-control-plane-system
+                - kyverno
       preconditions:
         all:
           - key: "{{ request.object.spec.replicas || `1` }}"
