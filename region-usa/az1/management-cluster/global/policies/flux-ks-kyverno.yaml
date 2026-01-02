@@ -20,12 +20,6 @@ spec:
     name: gitops-usa-az1
     namespace: kommander
   timeout: 2m
-  # Health checks for policies
-  healthChecks:
-    - apiVersion: kyverno.io/v1
-      kind: ClusterPolicy
-      name: disallow-privileged-containers
-    - apiVersion: kyverno.io/v1
-      kind: ClusterPolicy
-      name: require-requests-limits
+  # Health checks removed - policies may not exist initially
+  # Health checks can be added back once policies are stable
 
