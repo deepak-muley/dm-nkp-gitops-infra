@@ -4,8 +4,8 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: gatekeeper-constraint-templates
-  namespace: kommander-flux
+  name: clusterops-gatekeeper-constraint-templates
+  namespace: dm-nkp-gitops-infra
 spec:
   interval: 5m
   # Path to shared constraint templates
@@ -20,8 +20,8 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: gatekeeper-constraints
-  namespace: kommander-flux
+  name: clusterops-gatekeeper-constraints
+  namespace: dm-nkp-gitops-infra
 spec:
   interval: 5m
   # Path to shared constraints
@@ -33,7 +33,6 @@ spec:
     namespace: kommander
   # Wait for templates to be ready
   dependsOn:
-    - name: gatekeeper-constraint-templates
-      namespace: kommander-flux
+    - name: clusterops-gatekeeper-constraint-templates
+      namespace: dm-nkp-gitops-infra
   timeout: 2m
-
