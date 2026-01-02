@@ -56,4 +56,3 @@ spec:
                           - key: "{{ element.name }}"
                             operator: Equals
                             value: system:unauthenticated
-
