@@ -41,18 +41,22 @@ spec:
                   - key: "{{ request.object.roleRef.name }}"
                     operator: Equal
                     value: cluster-admin
-                  - any:
-                      - all:
-                          - key: "{{ element.kind }}"
-                            operator: Equal
-                            value: User
-                          - key: "{{ element.name }}"
-                            operator: Equal
-                            value: system:anonymous
-                      - all:
-                          - key: "{{ element.kind }}"
-                            operator: Equal
-                            value: Group
-                          - key: "{{ element.name }}"
-                            operator: Equal
-                            value: system:unauthenticated
+                  - key: "{{ element.kind }}"
+                    operator: Equal
+                    value: User
+                  - key: "{{ element.name }}"
+                    operator: Equal
+                    value: system:anonymous
+          - list: "request.object.subjects[]"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ request.object.roleRef.name }}"
+                    operator: Equal
+                    value: cluster-admin
+                  - key: "{{ element.kind }}"
+                    operator: Equal
+                    value: Group
+                  - key: "{{ element.name }}"
+                    operator: Equal
+                    value: system:unauthenticated
