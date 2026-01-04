@@ -1,0 +1,39 @@
+# Test: Container Limits Policy Violation
+# Policy: container-limits / enforce-max-container-limits (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by exceeding maximum container limits.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh container-limits -o yaml
+#   Kyverno: kubectl get clusterpolicy enforce-max-container-limits -o yaml
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-exceeds-limits
+  namespace: policy-tests-violations
+  labels:
+    test-policy: container-limits
+    test-type: violation
+spec:
+  containers:
+  - name: test-container
+    image: busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "100m"
+      # VIOLATION: Limits exceed policy maximum (adjust based on policy config)
+      # Example: If max is 1Gi memory, this would violate:
+      limits:
+        memory: "2Gi"
+        cpu: "2"
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  restartPolicy: Never
+

@@ -1,0 +1,29 @@
+# RBAC Policy Tests
+# Tests for policies in _common/policies/*/rbac/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Infrastructure (must be first)
+  - test-serviceaccount.yaml
+
+  # === Critical ===
+  # Block cluster-admin bindings
+  - test-block-cluster-admin.yaml
+  # Block wildcard (*) in RBAC
+  - test-block-wildcard-rbac.yaml
+  # Block default ServiceAccount usage
+  - test-block-default-sa.yaml
+
+  # === ServiceAccount Token Policies ===
+  # Block automount service account token
+  - test-automount-sa-token.yaml
+
+  # === Additional RBAC Policies ===
+  # Restrict secrets access (Kyverno only)
+  - test-restrict-secrets-access.yaml
+
+  # === ADD NEW TESTS HERE ===
+  # When adding a new RBAC policy, add a corresponding test file here.
+  # Naming convention: test-{policy-name}.yaml
+  # Example: For policy "block-default-sa.yaml", create "test-block-default-sa.yaml"
+

@@ -1,0 +1,34 @@
+# Test: Require Ingress TLS Policy Violation
+# Policy: require-ingress-tls (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by creating an Ingress without TLS.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh require-ingress-tls -o yaml
+#   Kyverno: kubectl get clusterpolicy require-ingress-tls -o yaml
+#
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-no-tls-ingress
+  namespace: policy-tests-violations
+  labels:
+    test-policy: require-ingress-tls
+    test-type: violation
+spec:
+  # VIOLATION: Missing TLS configuration
+  rules:
+  - host: test.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service
+            port:
+              number: 80
+

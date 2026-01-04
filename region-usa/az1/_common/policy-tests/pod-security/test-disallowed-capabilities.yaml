@@ -1,0 +1,35 @@
+# Test: Disallowed Capabilities Policy Violation
+# Policy: disallowed-capabilities / disallow-capabilities (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by using dangerous Linux capabilities.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh disallowed-capabilities -o yaml
+#   Kyverno: kubectl get clusterpolicy disallow-capabilities -o yaml
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-dangerous-capabilities
+  namespace: policy-tests-violations
+  labels:
+    test-policy: disallowed-capabilities
+    test-type: violation
+spec:
+  containers:
+  - name: test-container
+    image: busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    # VIOLATION: Using dangerous capability NET_ADMIN
+    securityContext:
+      capabilities:
+        add:
+        - NET_ADMIN
+        - SYS_ADMIN
+      runAsNonRoot: true
+      runAsUser: 1000
+  restartPolicy: Never
+

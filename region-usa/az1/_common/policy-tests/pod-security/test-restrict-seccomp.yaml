@@ -1,0 +1,29 @@
+# Test: Restrict Seccomp Policy Violation
+# Policy: restrict-seccomp (Kyverno only)
+#
+# This test resource violates the policy by not using a seccomp profile.
+# Expected behavior:
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Kyverno: kubectl get clusterpolicy restrict-seccomp -o yaml
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-no-seccomp
+  namespace: policy-tests-violations
+  labels:
+    test-policy: restrict-seccomp
+    test-type: violation
+spec:
+  containers:
+  - name: test-container
+    image: busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  # VIOLATION: Missing seccompProfile
+  restartPolicy: Never
+

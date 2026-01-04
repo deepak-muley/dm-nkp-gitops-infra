@@ -1,0 +1,21 @@
+# Policy Violation Tests
+# Negative tests demonstrating policy violations
+# All resources in this directory intentionally violate policies
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Pod security violations
+  - ../pod-security
+
+  # RBAC violations
+  - ../rbac
+
+  # Image security violations
+  - ../image-security
+
+  # Network security violations
+  - ../network-security
+
+  # Resource management violations
+  - ../resource-management
+

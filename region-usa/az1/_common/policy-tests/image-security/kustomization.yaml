@@ -1,0 +1,24 @@
+# Image Security Policy Tests
+# Tests for policies in _common/policies/*/image-security/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # === Critical ===
+  # Allowed container registries
+  - test-allowed-repos.yaml
+
+  # === High ===
+  # Block latest tag
+  - test-block-latest-tag.yaml
+
+  # === Medium ===
+  # Require image digest
+  - test-require-image-digest.yaml
+  # Disallow image pull policy always (Kyverno only)
+  - test-disallow-image-pull-policy-always.yaml
+
+  # === ADD NEW TESTS HERE ===
+  # When adding a new image-security policy, add a corresponding test file here.
+  # Naming convention: test-{policy-name}.yaml
+  # Example: For policy "block-latest-tag.yaml", create "test-block-latest-tag.yaml"
+

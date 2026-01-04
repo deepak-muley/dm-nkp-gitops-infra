@@ -1,0 +1,30 @@
+# Test: Block Privileged Container Policy Violation
+# Policy: block-privileged-container / disallow-privileged-containers (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by running a container in privileged mode.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh block-privileged-container -o yaml
+#   Kyverno: kubectl get clusterpolicy disallow-privileged-containers -o yaml
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-privileged-container
+  namespace: policy-tests-violations
+  labels:
+    test-policy: block-privileged-container
+    test-type: violation
+spec:
+  containers:
+  - name: test-container
+    image: busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    # VIOLATION: Privileged mode enabled
+    securityContext:
+      privileged: true
+  restartPolicy: Never
+

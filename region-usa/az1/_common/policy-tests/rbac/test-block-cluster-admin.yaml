@@ -1,0 +1,29 @@
+# Test: Block Cluster Admin Policy Violation
+# Policy: block-cluster-admin / disallow-cluster-admin (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by binding cluster-admin role.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh block-cluster-admin -o yaml
+#   Kyverno: kubectl get clusterpolicy disallow-cluster-admin -o yaml
+#
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: test-cluster-admin-binding
+  labels:
+    test-policy: block-cluster-admin
+    test-type: violation
+# VIOLATION: Binding cluster-admin role
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: test-sa
+  namespace: policy-tests-violations
+

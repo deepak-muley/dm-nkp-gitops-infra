@@ -1,0 +1,31 @@
+# Test: Block Latest Tag Policy Violation
+# Policy: block-latest-tag / disallow-latest-tag (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by using :latest tag.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh block-latest-tag -o yaml
+#   Kyverno: kubectl get clusterpolicy disallow-latest-tag -o yaml
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-latest-tag
+  namespace: policy-tests-violations
+  labels:
+    test-policy: block-latest-tag
+    test-type: violation
+spec:
+  containers:
+  - name: test-container
+    # VIOLATION: Using :latest tag
+    image: busybox:latest
+    command: ['sh', '-c', 'sleep 3600']
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  restartPolicy: Never
+

@@ -6,15 +6,21 @@ This folder contains resources that are **shared across multiple clusters** (man
 
 ```
 _common/
-└── policies/
-    └── gatekeeper/
-        ├── constraint-templates/    # Policy logic (Rego)
-        ├── constraints/             # Policy instances
-        ├── network-tests/           # Connectivity testing
-        ├── README.md                # Policy documentation
-        ├── FIREWALL-REQUIREMENTS.md # Firewall port documentation
-        ├── SECURITY-ROADMAP.md      # Security roadmap (local only)
-        └── VIOLATIONS-REPORT.md     # Violations report (local only)
+├── policies/
+│   ├── gatekeeper/                  # Gatekeeper policies
+│   │   ├── constraint-templates/    # Policy logic (Rego)
+│   │   ├── constraints/             # Policy instances
+│   │   ├── network-tests/           # Connectivity testing
+│   │   └── README.md                # Policy documentation
+│   └── kyverno/                     # Kyverno policies
+│       └── README.md                # Policy documentation
+└── policy-tests/                    # Policy validation tests
+    ├── namespace.yaml               # policy-tests namespace
+    ├── kustomization.yaml           # Main kustomization
+    ├── README.md                    # Test documentation
+    ├── pod-security/                # Pod security policy tests
+    ├── rbac/                        # RBAC policy tests
+    └── ... (more test categories)
 ```
 
 ## How It Works
@@ -74,4 +80,14 @@ If a cluster needs different settings:
 2. Add Constraint to `_common/policies/gatekeeper/constraints/<category>/`
 3. Update the kustomization.yaml files in those directories
 4. Commit and push - all clusters will receive the new policy
+5. **Add a test**: Create a test resource in `_common/policy-tests/<category>/test-<policy-name>.yaml` to verify the policy works
+
+## Policy Tests
+
+Test resources for validating policies are located in `_common/policy-tests/`. These tests intentionally violate policies to ensure they are being detected and enforced.
+
+See `_common/policy-tests/README.md` for details on:
+- How to run tests
+- How to verify policy violations
+- How to add tests for new policies
 

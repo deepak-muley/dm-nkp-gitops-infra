@@ -1,0 +1,74 @@
+# Test: Block Host Namespace Policy Violation
+# Policy: block-host-namespace / disallow-host-namespaces (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by using host namespaces (hostPID, hostIPC, hostNetwork).
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh block-host-namespace -o yaml
+#   Kyverno: kubectl get clusterpolicy disallow-host-namespaces -o yaml
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-host-network
+  namespace: policy-tests-violations
+  labels:
+    test-policy: block-host-namespace
+    test-type: violation
+spec:
+  # VIOLATION: Using host network namespace
+  hostNetwork: true
+  containers:
+  - name: test-container
+    image: busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  restartPolicy: Never
+---
+# Additional test for hostPID
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-host-pid
+  namespace: policy-tests-violations
+  labels:
+    test-policy: block-host-namespace
+    test-type: violation
+spec:
+  # VIOLATION: Using host PID namespace
+  hostPID: true
+  containers:
+  - name: test-container
+    image: busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  restartPolicy: Never
+---
+# Additional test for hostIPC
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-host-ipc
+  namespace: policy-tests-violations
+  labels:
+    test-policy: block-host-namespace
+    test-type: violation
+spec:
+  # VIOLATION: Using host IPC namespace
+  hostIPC: true
+  containers:
+  - name: test-container
+    image: busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  restartPolicy: Never
+

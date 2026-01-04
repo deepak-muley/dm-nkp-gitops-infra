@@ -1,0 +1,35 @@
+# Test: Allowed Repos Policy Violation
+# Policy: allowed-repos / restrict-image-registries (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by using an image from a disallowed registry.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh allowed-repos -o yaml
+#   Kyverno: kubectl get clusterpolicy restrict-image-registries -o yaml
+#
+# NOTE: This test uses a fake registry. Adjust the image name based on your policy configuration.
+# Common allowed registries: docker.io, gcr.io, quay.io, registry.k8s.io
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-disallowed-repo
+  namespace: policy-tests-violations
+  labels:
+    test-policy: allowed-repos
+    test-type: violation
+spec:
+  containers:
+  - name: test-container
+    # VIOLATION: Using image from disallowed registry (adjust based on policy config)
+    # Example: If policy allows only docker.io and gcr.io, this would violate:
+    image: evil-registry.example.com/busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  restartPolicy: Never
+

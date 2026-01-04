@@ -1,0 +1,24 @@
+# Network Security Policy Tests
+# Tests for policies in _common/policies/*/network-security/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # === Service Type Restrictions ===
+  # Block NodePort services
+  - test-block-nodeport.yaml
+  # Block LoadBalancer services
+  - test-block-loadbalancer.yaml
+  # Block host ports
+  - test-block-host-ports.yaml
+  # Restrict external IPs (Kyverno only)
+  - test-restrict-external-ips.yaml
+
+  # === Ingress Policies ===
+  # Require Ingress TLS
+  - test-require-ingress-tls.yaml
+
+  # === ADD NEW TESTS HERE ===
+  # When adding a new network-security policy, add a corresponding test file here.
+  # Naming convention: test-{policy-name}.yaml
+  # Example: For policy "block-nodeport.yaml", create "test-block-nodeport.yaml"
+

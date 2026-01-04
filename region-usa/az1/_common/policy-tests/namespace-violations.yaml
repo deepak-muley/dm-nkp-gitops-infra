@@ -1,0 +1,11 @@
+# Policy Tests Violations Namespace
+# This namespace contains test resources that VIOLATE policies
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: policy-tests-violations
+  labels:
+    app.kubernetes.io/part-of: policy-tests
+    policy-testing: "violations"
+    policy-test-type: "negative"
+

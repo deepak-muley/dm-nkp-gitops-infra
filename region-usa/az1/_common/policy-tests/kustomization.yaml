@@ -1,0 +1,46 @@
+# Policy Tests
+# Comprehensive test suite for validating policy enforcement
+#
+# This kustomization includes both positive (compliant) and negative (violations) test resources.
+#
+# Structure:
+#   - compliant/     : Positive tests (policy-compliant resources) in policy-tests-compliant namespace
+#   - violations/    : Negative tests (policy violations) in policy-tests-violations namespace
+#
+# Usage:
+#   # Apply all tests (compliant + violations)
+#   kubectl apply -k region-usa/az1/_common/policy-tests/
+#
+#   # Apply only compliant examples
+#   kubectl apply -k region-usa/az1/_common/policy-tests/compliant/
+#
+#   # Apply only violation tests
+#   kubectl apply -k region-usa/az1/_common/policy-tests/violations/
+#
+# To verify policy violations:
+#   Gatekeeper: kubectl get constraints -A
+#   Kyverno: kubectl get clusterpolicy -o yaml
+#   Kyverno Reports: kubectl get policyreport -n policy-tests-violations
+#
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Namespaces
+  - namespace-compliant.yaml
+  - namespace-violations.yaml
+
+  # Positive tests (compliant examples)
+  - compliant
+
+  # Negative tests (policy violations)
+  - violations
+
+  # === ADD NEW CATEGORIES HERE ===
+  # When adding tests for a new policy category, create a subdirectory
+  # in violations/ and add it to violations/kustomization.yaml
+  # Categories should match _common/policies/ structure:
+  # - supply-chain
+  # - multi-tenancy
+  # - best-practices
+  # etc.
+

@@ -1,0 +1,29 @@
+# Test: Restrict External IPs Policy Violation
+# Policy: restrict-external-ips (Kyverno only)
+#
+# This test resource violates the policy by using externalIPs in Service.
+# Expected behavior:
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Kyverno: kubectl get clusterpolicy restrict-external-ips -o yaml
+#
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-external-ips
+  namespace: policy-tests-violations
+  labels:
+    test-policy: restrict-external-ips
+    test-type: violation
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: test
+  # VIOLATION: Using externalIPs
+  externalIPs:
+  - 1.2.3.4
+

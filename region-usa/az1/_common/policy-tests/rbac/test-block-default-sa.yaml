@@ -1,0 +1,32 @@
+# Test: Block Default ServiceAccount Policy Violation
+# Policy: block-default-sa / disallow-default-serviceaccount (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by using the default ServiceAccount.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh block-default-sa -o yaml
+#   Kyverno: kubectl get clusterpolicy disallow-default-serviceaccount -o yaml
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-default-sa
+  namespace: policy-tests-violations
+  labels:
+    test-policy: block-default-sa
+    test-type: violation
+spec:
+  containers:
+  - name: test-container
+    image: busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  # VIOLATION: Using default ServiceAccount (not explicitly set or set to "default")
+  serviceAccountName: default
+  restartPolicy: Never
+

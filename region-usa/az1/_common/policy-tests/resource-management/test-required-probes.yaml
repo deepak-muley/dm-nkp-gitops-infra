@@ -1,0 +1,39 @@
+# Test: Required Probes Policy Violation
+# Policy: required-probes / require-health-probes (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by not having liveness and readiness probes.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh required-probes -o yaml
+#   Kyverno: kubectl get clusterpolicy require-health-probes -o yaml
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-no-probes
+  namespace: policy-tests-violations
+  labels:
+    test-policy: required-probes
+    test-type: violation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test
+  template:
+    metadata:
+      labels:
+        app: test
+    spec:
+      containers:
+      - name: test-container
+        image: busybox:1.36
+        command: ['sh', '-c', 'sleep 3600']
+        # VIOLATION: Missing livenessProbe and readinessProbe
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+

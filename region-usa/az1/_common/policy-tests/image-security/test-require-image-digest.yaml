@@ -1,0 +1,31 @@
+# Test: Require Image Digest Policy Violation
+# Policy: require-image-digest (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by not using image digest.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh require-image-digest -o yaml
+#   Kyverno: kubectl get clusterpolicy require-image-digest -o yaml
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-no-image-digest
+  namespace: policy-tests-violations
+  labels:
+    test-policy: require-image-digest
+    test-type: violation
+spec:
+  containers:
+  - name: test-container
+    # VIOLATION: Using tag instead of digest
+    image: busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  restartPolicy: Never
+

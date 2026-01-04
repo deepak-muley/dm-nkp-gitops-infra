@@ -1,0 +1,30 @@
+# Test: Disallow Image Pull Policy Always Policy Violation
+# Policy: disallow-image-pull-policy-always (Kyverno only)
+#
+# This test resource violates the policy by using imagePullPolicy: Always.
+# Expected behavior:
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Kyverno: kubectl get clusterpolicy disallow-image-pull-policy-always -o yaml
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pull-policy-always
+  namespace: policy-tests-violations
+  labels:
+    test-policy: disallow-image-pull-policy-always
+    test-type: violation
+spec:
+  containers:
+  - name: test-container
+    image: busybox:1.36
+    # VIOLATION: Using imagePullPolicy: Always
+    imagePullPolicy: Always
+    command: ['sh', '-c', 'sleep 3600']
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  restartPolicy: Never
+

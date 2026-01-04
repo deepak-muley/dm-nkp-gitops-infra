@@ -1,0 +1,8 @@
+# Compliant Policy Tests
+# Positive tests demonstrating policy-compliant resources
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Comprehensive compliant example
+  - compliant-example.yaml
+

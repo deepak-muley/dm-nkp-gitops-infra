@@ -33,3 +33,9 @@ resources:
   - require-readonly-rootfs.yaml
   # Restrict volume types to safe list
   - restrict-volume-types.yaml
+
+  # === BEST PRACTICES (KubeSec recommendations) ===
+  # Require high UID/GID (>10000)
+  - require-high-uid.yaml
+  # Require hostUsers: false (user namespace isolation)
+  - require-host-users-false.yaml

@@ -1,0 +1,30 @@
+# Test: Block NodePort Service Policy Violation
+# Policy: block-nodeport / disallow-nodeport-services (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by creating a NodePort service.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh block-nodeport -o yaml
+#   Kyverno: kubectl get clusterpolicy disallow-nodeport-services -o yaml
+#
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-nodeport-service
+  namespace: policy-tests-violations
+  labels:
+    test-policy: block-nodeport
+    test-type: violation
+spec:
+  # VIOLATION: Using NodePort service type
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 8080
+    nodePort: 30080
+  selector:
+    app: test
+

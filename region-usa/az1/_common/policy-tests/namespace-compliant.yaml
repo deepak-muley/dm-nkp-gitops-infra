@@ -1,0 +1,11 @@
+# Policy Tests Compliant Namespace
+# This namespace contains test resources that COMPLY with all policies
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: policy-tests-compliant
+  labels:
+    app.kubernetes.io/part-of: policy-tests
+    policy-testing: "compliant"
+    policy-test-type: "positive"
+

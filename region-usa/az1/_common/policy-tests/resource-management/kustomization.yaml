@@ -1,0 +1,22 @@
+# Resource Management Policy Tests
+# Tests for policies in _common/policies/*/resource-management/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # === Critical ===
+  # Require resource requests and limits
+  - test-required-resources.yaml
+
+  # === High ===
+  # Require standard labels
+  - test-required-labels.yaml
+  # Enforce maximum container limits
+  - test-container-limits.yaml
+  # Require health probes
+  - test-required-probes.yaml
+
+  # === ADD NEW TESTS HERE ===
+  # When adding a new resource-management policy, add a corresponding test file here.
+  # Naming convention: test-{policy-name}.yaml
+  # Example: For policy "required-resources.yaml", create "test-required-resources.yaml"
+

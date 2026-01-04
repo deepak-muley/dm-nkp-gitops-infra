@@ -1,0 +1,29 @@
+# Test: Block LoadBalancer Service Policy Violation
+# Policy: block-loadbalancer / disallow-loadbalancer-services (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by creating a LoadBalancer service.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh block-loadbalancer -o yaml
+#   Kyverno: kubectl get clusterpolicy disallow-loadbalancer-services -o yaml
+#
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-loadbalancer-service
+  namespace: policy-tests-violations
+  labels:
+    test-policy: block-loadbalancer
+    test-type: violation
+spec:
+  # VIOLATION: Using LoadBalancer service type
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: test
+

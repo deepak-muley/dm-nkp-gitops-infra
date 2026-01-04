@@ -1,0 +1,31 @@
+# Test: Require Read-Only Root Filesystem Policy Violation
+# Policy: require-readonly-rootfs (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by not setting readOnlyRootFilesystem: true.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequirereadonlyrootfs.constraints.gatekeeper.sh require-readonly-rootfs -o yaml
+#   Kyverno: kubectl get clusterpolicy require-readonly-root-filesystem -o yaml
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-writable-rootfs
+  namespace: policy-tests-violations
+  labels:
+    test-policy: require-readonly-rootfs
+    test-type: violation
+spec:
+  containers:
+  - name: test-container
+    image: busybox:1.36
+    command: ['sh', '-c', 'sleep 3600']
+    # VIOLATION: Missing securityContext.readOnlyRootFilesystem: true
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+  restartPolicy: Never
+

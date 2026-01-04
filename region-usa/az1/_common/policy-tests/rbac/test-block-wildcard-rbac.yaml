@@ -1,0 +1,43 @@
+# Test: Block Wildcard RBAC Policy Violation
+# Policy: block-wildcard-rbac / disallow-wildcard-rbac (Gatekeeper & Kyverno)
+#
+# This test resource violates the policy by using wildcard (*) in RBAC rules.
+# Expected behavior:
+#   - Gatekeeper: Should create violation (if enforcementAction: deny, will block)
+#   - Kyverno: Should create violation (if validationFailureAction: Enforce, will block)
+#
+# To verify violations:
+#   Gatekeeper: kubectl get k8srequiredlabels.constraints.gatekeeper.sh block-wildcard-rbac -o yaml
+#   Kyverno: kubectl get clusterpolicy disallow-wildcard-rbac -o yaml
+#
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: test-wildcard-role
+  namespace: policy-tests-violations
+  labels:
+    test-policy: block-wildcard-rbac
+    test-type: violation
+rules:
+# VIOLATION: Using wildcard (*) in resources
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: test-wildcard-rolebinding
+  namespace: policy-tests-violations
+  labels:
+    test-policy: block-wildcard-rbac
+    test-type: violation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: test-wildcard-role
+subjects:
+- kind: ServiceAccount
+  name: test-sa
+  namespace: policy-tests-violations
+

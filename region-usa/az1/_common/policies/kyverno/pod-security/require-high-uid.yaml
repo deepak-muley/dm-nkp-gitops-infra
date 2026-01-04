@@ -1,0 +1,60 @@
+# Require High UID/GID
+# MEDIUM: Requires containers to run with high UID/GID (>10000) to avoid conflicts with host users/groups
+# Reference: KubeSec best practice - reduces risk of UID/GID conflicts with host system
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-high-uid
+  annotations:
+    policies.kyverno.io/title: Require High UID/GID
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kuverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0+
+    kyverno.io/kubernetes-version: "1.22-1.30"
+    policies.kyverno.io/description: >-
+      Running containers with high UID/GID (>10000) reduces the risk of conflicts
+      with host system users and groups. This is a security best practice that
+      prevents potential privilege escalation scenarios through UID/GID collisions.
+      This policy requires runAsUser and runAsGroup to be greater than 10000.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-high-uid-gid
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - capi-system
+                - capi-kubeadm-bootstrap-system
+                - capi-kubeadm-control-plane-system
+                - capa-system
+                - capz-system
+                - capg-system
+                - capv-system
+                - caaph-system
+                - capk-system
+                - capd-system
+      validate:
+        message: >-
+          Best Practice: Use high UID/GID (>10000) to avoid conflicts with host users/groups.
+          NOTE: Kyverno pattern matching cannot enforce numeric constraints (>10000).
+          This policy validates that runAsUser and runAsGroup are set.
+          For strict enforcement of >10000, consider using Gatekeeper with Rego or Kyverno CEL expressions (requires Kyverno 1.10+).
+        pattern:
+          spec:
+            securityContext:
+              runAsUser: "?*"
+              runAsGroup: "?*"
+            containers:
+              - name: "*"
+

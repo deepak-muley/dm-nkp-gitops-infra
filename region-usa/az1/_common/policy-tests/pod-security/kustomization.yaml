@@ -1,0 +1,36 @@
+# Pod Security Policy Tests
+# Tests for policies in _common/policies/*/pod-security/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # === CRITICAL (PSS Baseline) ===
+  # Block privileged containers
+  - test-block-privileged-container.yaml
+  # Block host namespaces (hostPID, hostIPC, hostNetwork)
+  - test-block-host-namespace.yaml
+  # Disallow dangerous capabilities
+  - test-disallowed-capabilities.yaml
+  # Block hostPath volumes (Kyverno only)
+  - test-restrict-hostpath.yaml
+
+  # === HIGH (PSS Baseline/Restricted) ===
+  # Block privilege escalation
+  - test-block-privilege-escalation.yaml
+  # Require non-root user
+  - test-require-run-as-nonroot.yaml
+  # Require dropping all capabilities (Kyverno only)
+  - test-drop-all-capabilities.yaml
+  # Restrict seccomp profiles (Kyverno only)
+  - test-restrict-seccomp.yaml
+  # Restrict volume types (Kyverno only)
+  - test-restrict-volume-types.yaml
+
+  # === MEDIUM (PSS Restricted) ===
+  # Require read-only root filesystem
+  - test-require-readonly-rootfs.yaml
+
+  # === ADD NEW TESTS HERE ===
+  # When adding a new pod-security policy, add a corresponding test file here.
+  # Naming convention: test-{policy-name}.yaml
+  # Example: For policy "block-privileged-container.yaml", create "test-block-privileged-container.yaml"
+
