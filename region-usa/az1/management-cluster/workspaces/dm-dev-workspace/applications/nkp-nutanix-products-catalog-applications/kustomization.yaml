@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   # NDK
   - ndk
-  # DISABLED: Nutanix AI dependencies (must be deployed before nutanix-ai)
-  # - nutanix-ai-dependencies
+  # Nutanix AI dependencies (must be deployed before nutanix-ai)
+  - nutanix-ai-dependencies
   # Nutanix AI
   - nutanix-ai
