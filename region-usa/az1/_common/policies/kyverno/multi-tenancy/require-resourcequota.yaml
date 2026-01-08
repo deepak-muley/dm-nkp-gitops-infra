@@ -48,17 +48,17 @@ spec:
         data:
           spec:
             hard:
-              # Compute resources
-              requests.cpu: "10"
-              requests.memory: "20Gi"
-              limits.cpu: "20"
-              limits.memory: "40Gi"
-              # Object counts
-              pods: "100"
-              services: "20"
-              secrets: "50"
-              configmaps: "50"
-              persistentvolumeclaims: "20"
+              # Compute resources (increased by ~40% buffer total)
+              requests.cpu: "14"
+              requests.memory: "28Gi"
+              limits.cpu: "28"
+              limits.memory: "56Gi"
+              # Object counts (increased by +70 buffer total: +20 +50)
+              pods: "170"
+              services: "90"
+              secrets: "120"
+              configmaps: "120"
+              persistentvolumeclaims: "90"
 ---
 # Generate LimitRange for namespaces
 apiVersion: kyverno.io/v1
@@ -115,4 +115,3 @@ spec:
                 min:
                   cpu: "10m"
                   memory: "16Mi"
-
