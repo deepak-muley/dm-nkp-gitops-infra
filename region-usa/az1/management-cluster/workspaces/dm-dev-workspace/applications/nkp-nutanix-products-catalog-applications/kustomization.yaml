@@ -5,5 +5,5 @@ resources:
   - ndk
   # DISABLED: Nutanix AI dependencies (must be deployed before nutanix-ai)
   # - nutanix-ai-dependencies
-  # DISABLED: Nutanix AI
-  # - nutanix-ai
+  # Nutanix AI
+  - nutanix-ai
