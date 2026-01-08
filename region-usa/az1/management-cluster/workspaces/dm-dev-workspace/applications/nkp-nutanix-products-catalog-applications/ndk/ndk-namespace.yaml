@@ -1,0 +1,8 @@
+# Namespace for NDK/Nutanix applications
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ntnx-system
+  labels:
+    app.kubernetes.io/part-of: nutanix
+

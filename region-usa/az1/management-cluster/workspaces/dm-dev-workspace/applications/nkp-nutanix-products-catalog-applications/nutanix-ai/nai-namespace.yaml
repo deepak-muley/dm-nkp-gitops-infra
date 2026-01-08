@@ -1,0 +1,7 @@
+# Namespace for NAI/Nutanix AI applications
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nai-system
+  labels:
+    app.kubernetes.io/part-of: nutanix-ai

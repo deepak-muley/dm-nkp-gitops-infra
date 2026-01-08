@@ -1,8 +1,25 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
+  # SealedSecret for NDK image pull credentials (applied to management cluster)
+  - ndk-image-pull-secret.yaml
   # ClusterResourceSet to deploy NDK secrets to workload clusters (apply first)
   - ndk-workload-cluster-crs.yaml
   # NDK App Deployment
   - ndk.yaml
   - ndk-config-overrides.yaml
+
+# Generate ConfigMap for ClusterResourceSet from separate files
+configMapGenerator:
+  - name: ndk-image-pull-secret-resources
+    namespace: dm-dev-workspace
+    options:
+      disableNameSuffixHash: true
+      labels:
+        app.kubernetes.io/part-of: ndk
+        app.kubernetes.io/component: cluster-resource-set
+    files:
+      # Namespace YAML for workload clusters
+      - namespace.yaml=ndk-namespace.yaml
+      # SealedSecret YAML for workload clusters
+      - sealed-secret.yaml=ndk-image-pull-secret.yaml

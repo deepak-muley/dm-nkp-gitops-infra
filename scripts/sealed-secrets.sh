@@ -9,12 +9,14 @@
 #   ./scripts/sealed-secrets.sh <command> [options]
 #
 # Commands:
-#   backup          Backup sealed-secrets controller keys (public & private)
-#   restore         Restore sealed-secrets keys from backup
-#   encrypt         Encrypt a plaintext secret YAML file
-#   decrypt         Decrypt a sealed secret YAML file (requires keys)
-#   re-encrypt      Re-encrypt secrets with new credentials
-#   status          Check status of sealed secrets in cluster
+#   backup                        Backup sealed-secrets controller keys (public & private)
+#   restore                       Restore sealed-secrets keys from backup
+#   generate-cluster-sealed-secrets  Generate SealedSecrets for cluster credentials (PC, Konnector, CSI, Image Registry)
+#   generate-ndk-sealed-secrets    Generate SealedSecret for NDK image pull credentials
+#   generate-nai-sealed-secrets    Generate SealedSecret for NAI image pull credentials
+#   decrypt                       Decrypt a sealed secret YAML file (requires keys)
+#   re-encrypt                    Re-encrypt secrets with new credentials
+#   status                        Check status of sealed secrets in cluster
 #
 # Use './scripts/sealed-secrets.sh <command> --help' for command-specific help
 
@@ -35,6 +37,7 @@ DEFAULT_MGMT_KUBECONFIG="/Users/deepak.muley/ws/nkp/dm-nkp-mgmt-1.conf"
 DEFAULT_BACKUP_DIR="/Users/deepak.muley/ws/nkp"
 DEFAULT_BACKUP_FILE="$DEFAULT_BACKUP_DIR/sealed-secrets-key-backup.yaml"
 DEFAULT_PUBLIC_KEY="$DEFAULT_BACKUP_DIR/sealed-secrets-public-key.pem"
+DEFAULT_DO_NOT_CHECKIN_DIR="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/do-not-checkin-folder"
 
 # Global variables
 KUBECONFIG=""
@@ -374,106 +377,16 @@ EOF
 }
 
 # ============================================================================
-# ENCRYPT COMMAND
-# ============================================================================
-cmd_encrypt() {
-    local INPUT_FILE=""
-    local OUTPUT_FILE=""
-    local NAMESPACE=""
-    local NAME=""
-
-    # Parse options
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -k|--kubeconfig)
-                KUBECONFIG="$2"
-                shift 2
-                ;;
-            -f|--file)
-                INPUT_FILE="$2"
-                shift 2
-                ;;
-            -o|--output)
-                OUTPUT_FILE="$2"
-                shift 2
-                ;;
-            -n|--namespace)
-                NAMESPACE="$2"
-                shift 2
-                ;;
-            --name)
-                NAME="$2"
-                shift 2
-                ;;
-            -h|--help)
-                cat << EOF
-Encrypt a Plaintext Secret
-
-Encrypts a plaintext Kubernetes Secret YAML file into a SealedSecret.
-
-Usage:
-    $0 encrypt [options]
-
-Options:
-    -k, --kubeconfig PATH    Path to kubeconfig file
-    -f, --file PATH          Path to plaintext secret YAML file
-    -o, --output PATH        Output file (default: stdout)
-    -n, --namespace NAME     Namespace (required if not in YAML)
-    --name NAME              Secret name (required if not in YAML)
-    -h, --help               Show this help message
-
-Examples:
-    # Encrypt from file
-    $0 encrypt -f secret.yaml -o sealed-secret.yaml
-
-    # Encrypt with namespace
-    $0 encrypt -f secret.yaml -n my-namespace -o sealed-secret.yaml
-
-    # Encrypt from stdin
-    cat secret.yaml | $0 encrypt -n my-namespace --name my-secret -o sealed-secret.yaml
-EOF
-                exit 0
-                ;;
-            *)
-                echo -e "${RED}Error: Unknown option: $1${NC}"
-                exit 1
-                ;;
-        esac
-    done
-
-    check_prerequisites
-    set_kubeconfig
-
-    if [ -z "$INPUT_FILE" ]; then
-        # Read from stdin
-        TEMP_INPUT=$(mktemp)
-        cat > "$TEMP_INPUT"
-        INPUT_FILE="$TEMP_INPUT"
-    fi
-
-    if [ ! -f "$INPUT_FILE" ]; then
-        echo -e "${RED}✗ Input file not found: $INPUT_FILE${NC}"
-        exit 1
-    fi
-
-    # Encrypt
-    if [ -n "$OUTPUT_FILE" ]; then
-        kubeseal < "$INPUT_FILE" > "$OUTPUT_FILE"
-        echo -e "${GREEN}✓ Encrypted secret saved to: $OUTPUT_FILE${NC}"
-    else
-        kubeseal < "$INPUT_FILE"
-    fi
-
-    [ -n "$TEMP_INPUT" ] && rm -f "$TEMP_INPUT"
-}
-
-# ============================================================================
 # DECRYPT COMMAND
 # ============================================================================
 cmd_decrypt() {
     local INPUT_FILE=""
     local OUTPUT_FILE=""
-    local BACKUP_FILE="$DEFAULT_BACKUP_FILE"
+    local BACKUP_FILE=""
+    local KEY_STORAGE_DIR="$DEFAULT_DO_NOT_CHECKIN_DIR"
+    local CLUSTER_NAME=""
+    local PRIVATE_KEY_FILE=""
+    local SEALED_SECRETS_NS="sealed-secrets-system"
 
     # Parse options
     while [[ $# -gt 0 ]]; do
@@ -490,11 +403,19 @@ cmd_decrypt() {
                 BACKUP_FILE="$2"
                 shift 2
                 ;;
+            -k|--kubeconfig)
+                KUBECONFIG="$2"
+                shift 2
+                ;;
+            --cluster-name)
+                CLUSTER_NAME="$2"
+                shift 2
+                ;;
             -h|--help)
                 cat << EOF
 Decrypt a SealedSecret
 
-Decrypts a SealedSecret YAML file to plaintext (requires private keys).
+Decrypts a SealedSecret YAML file to plaintext using private keys from the cluster.
 
 Usage:
     $0 decrypt [options]
@@ -502,11 +423,14 @@ Usage:
 Options:
     -f, --file PATH          Path to SealedSecret YAML file
     -o, --output PATH        Output file (default: stdout)
-    -b, --backup PATH        Path to keys backup (default: $DEFAULT_BACKUP_FILE)
+    -b, --backup PATH        Path to keys backup file (optional, will fetch from cluster if not provided)
+    -k, --kubeconfig PATH    Path to kubeconfig file (required if not using default)
+    --cluster-name NAME      Cluster name for key file naming (default: auto-detect from kubeconfig)
     -h, --help               Show this help message
 
 Examples:
     $0 decrypt -f sealed-secret.yaml -o secret.yaml
+    $0 decrypt -f sealed-secret.yaml -k /path/to/kubeconfig -o secret.yaml
     cat sealed-secret.yaml | $0 decrypt -o secret.yaml
 EOF
                 exit 0
@@ -519,6 +443,7 @@ EOF
     done
 
     check_prerequisites
+    set_kubeconfig
 
     if [ -z "$INPUT_FILE" ]; then
         echo -e "${RED}✗ Input file required (use -f or pipe from stdin)${NC}"
@@ -530,31 +455,109 @@ EOF
         exit 1
     fi
 
+    print_header "Decrypt Sealed Secret"
+
+    # If backup file not provided, fetch from cluster
+    if [[ -z "$BACKUP_FILE" ]]; then
+        # Determine cluster name for key file naming
+        if [[ -z "$CLUSTER_NAME" ]]; then
+            CLUSTER_NAME=$(kubectl config view --minify -o jsonpath='{.contexts[0].context.cluster}' 2>/dev/null || echo "default")
+            CLUSTER_NAME=$(echo "$CLUSTER_NAME" | sed 's|https\?://||' | sed 's|:.*||' | sed 's|[^a-zA-Z0-9-]|-|g' | head -c 50)
+            if [[ -z "$CLUSTER_NAME" ]] || [[ "$CLUSTER_NAME" == "default" ]]; then
+                CLUSTER_NAME="cluster-$(date +%Y%m%d-%H%M%S)"
+            fi
+        fi
+
+        PRIVATE_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-key-backup-${CLUSTER_NAME}.yaml"
+
+        # Check if key file exists locally
+        if [[ ! -f "$PRIVATE_KEY_FILE" ]]; then
+            echo -e "${CYAN}Private key not found locally. Fetching from cluster...${NC}"
+
+            if ! kubectl get namespace "$SEALED_SECRETS_NS" &> /dev/null; then
+                echo -e "${RED}✗ Namespace $SEALED_SECRETS_NS does not exist${NC}"
+                exit 1
+            fi
+
+            mkdir -p "$KEY_STORAGE_DIR"
+
+            # Fetch the active private key from cluster
+            local ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+            if [[ -z "$ACTIVE_KEY_NAME" ]]; then
+                echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
+                exit 1
+            fi
+
+            echo -e "${YELLOW}  Using active key: $ACTIVE_KEY_NAME${NC}"
+            echo -e "${YELLOW}  Fetching private key to: $PRIVATE_KEY_FILE${NC}"
+            kubectl get secret "$ACTIVE_KEY_NAME" -n "$SEALED_SECRETS_NS" -o yaml > "$PRIVATE_KEY_FILE" 2>/dev/null || {
+                echo -e "${RED}✗ Failed to fetch private key${NC}"
+                exit 1
+            }
+            echo -e "${GREEN}✓ Private key fetched successfully${NC}"
+        else
+            echo -e "${CYAN}Using existing private key: $PRIVATE_KEY_FILE${NC}"
+        fi
+
+        BACKUP_FILE="$PRIVATE_KEY_FILE"
+    fi
+
     if [ ! -f "$BACKUP_FILE" ]; then
-        echo -e "${RED}✗ Backup file not found: $BACKUP_FILE${NC}"
-        echo -e "${YELLOW}  Run '$0 backup' first or specify with -b${NC}"
+        echo -e "${RED}✗ Private key file not found: $BACKUP_FILE${NC}"
         exit 1
     fi
 
-    # Use kubeseal to decrypt (requires keys to be in cluster or use --recovery-unseal)
-    echo -e "${YELLOW}⚠ Decryption requires keys to be in the cluster${NC}"
-    echo -e "${YELLOW}  Run '$0 restore' first, or use kubeseal --recovery-unseal${NC}"
+    echo -e "${CYAN}Decrypting using private key: $BACKUP_FILE${NC}"
     echo ""
-    echo -e "${CYAN}Attempting decryption...${NC}"
+
+    # Extract private key from the backup file and use it for decryption
+    local TEMP_KEY_DIR=$(mktemp -d)
+    local TEMP_KEY_FILE="$TEMP_KEY_DIR/tls.key"
+
+    # Extract tls.key from the backup YAML
+    # First try if it's a single Secret
+    kubectl get secret -f "$BACKUP_FILE" -o jsonpath='{.data.tls\.key}' 2>/dev/null | base64 -d > "$TEMP_KEY_FILE" 2>/dev/null || {
+        # Try parsing as YAML List (items array)
+        yq eval '.items[0].data."tls.key"' "$BACKUP_FILE" 2>/dev/null | base64 -d > "$TEMP_KEY_FILE" 2>/dev/null || {
+            # Try parsing as single Secret YAML
+            yq eval '.data."tls.key"' "$BACKUP_FILE" 2>/dev/null | base64 -d > "$TEMP_KEY_FILE" 2>/dev/null || {
+                echo -e "${RED}✗ Failed to extract private key from backup file${NC}"
+                echo -e "${YELLOW}  File format may be incorrect. Expected Secret YAML with tls.key in data field.${NC}"
+                rm -rf "$TEMP_KEY_DIR"
+                exit 1
+            }
+        }
+    }
+
+    if [ ! -s "$TEMP_KEY_FILE" ]; then
+        echo -e "${RED}✗ Extracted private key is empty${NC}"
+        rm -rf "$TEMP_KEY_DIR"
+        exit 1
+    fi
+
+    echo -e "${CYAN}Decrypting using private key from: $BACKUP_FILE${NC}"
 
     if [ -n "$OUTPUT_FILE" ]; then
-        kubeseal --recovery-unseal < "$INPUT_FILE" > "$OUTPUT_FILE" 2>/dev/null || {
+        kubeseal --recovery-unseal --recovery-private-key="$TEMP_KEY_FILE" < "$INPUT_FILE" > "$OUTPUT_FILE" 2>/dev/null || {
             echo -e "${RED}✗ Decryption failed${NC}"
-            echo -e "${YELLOW}  Make sure keys are restored or use kubeseal directly with --recovery-private-key${NC}"
+            echo -e "${YELLOW}  Make sure the private key matches the sealed secret${NC}"
+            echo -e "${YELLOW}  Private key used: $BACKUP_FILE${NC}"
+            rm -rf "$TEMP_KEY_DIR"
             exit 1
         }
         echo -e "${GREEN}✓ Decrypted secret saved to: $OUTPUT_FILE${NC}"
+        echo -e "${CYAN}  Used private key: $BACKUP_FILE${NC}"
     else
-        kubeseal --recovery-unseal < "$INPUT_FILE" 2>/dev/null || {
+        kubeseal --recovery-unseal --recovery-private-key="$TEMP_KEY_FILE" < "$INPUT_FILE" 2>/dev/null || {
             echo -e "${RED}✗ Decryption failed${NC}"
+            echo -e "${YELLOW}  Private key used: $BACKUP_FILE${NC}"
+            rm -rf "$TEMP_KEY_DIR"
             exit 1
         }
     fi
+
+    rm -rf "$TEMP_KEY_DIR"
 }
 
 # ============================================================================
@@ -877,6 +880,830 @@ EOF
 }
 
 # ============================================================================
+# GENERATE-CLUSTER-SEALED-SECRETS COMMAND
+# ============================================================================
+cmd_generate_cluster_sealed_secrets() {
+    # Default paths
+    local INPUT_FILE="${INPUT_FILE:-/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/do-not-checkin-folder/dm-dev-common-secrets.yaml}"
+    local OUTPUT_FILE="${OUTPUT_FILE:-/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/clusters/nutanix-infra/sealed-secrets/dm-dev-common-sealed-secrets.yaml}"
+    local SEALED_SECRETS_NS="sealed-secrets-system"
+    local SEALED_SECRETS_CTRL="sealed-secrets-controller"
+    local KEY_STORAGE_DIR="$DEFAULT_DO_NOT_CHECKIN_DIR"
+    local CLUSTER_NAME=""
+    local PRIVATE_KEY_FILE=""
+    local PUBLIC_KEY_FILE=""
+
+    # Parse options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -f|--file)
+                INPUT_FILE="$2"
+                shift 2
+                ;;
+            -o|--output)
+                OUTPUT_FILE="$2"
+                shift 2
+                ;;
+            --pc-credentials.username)
+                PC_CREDS_USERNAME="$2"
+                shift 2
+                ;;
+            --pc-credentials.password)
+                PC_CREDS_PASSWORD="$2"
+                shift 2
+                ;;
+            --konnector-agent.username)
+                KONNECTOR_USERNAME="$2"
+                shift 2
+                ;;
+            --konnector-agent.password)
+                KONNECTOR_PASSWORD="$2"
+                shift 2
+                ;;
+            --csi.key)
+                CSI_KEY="$2"
+                shift 2
+                ;;
+            --image-registry.username)
+                IMAGE_REGISTRY_USERNAME="$2"
+                shift 2
+                ;;
+            --image-registry.password)
+                IMAGE_REGISTRY_PASSWORD="$2"
+                shift 2
+                ;;
+            -k|--kubeconfig)
+                KUBECONFIG="$2"
+                shift 2
+                ;;
+            --cluster-name)
+                CLUSTER_NAME="$2"
+                shift 2
+                ;;
+            -h|--help)
+                cat << EOF
+Generate Cluster Sealed Secrets
+
+Generates SealedSecrets for cluster credentials (PC, Konnector, CSI, Image Registry) from plain text inputs or processes a file containing Secrets.
+All inputs are in plain text - the script handles base64 encoding internally.
+
+Usage:
+    $0 generate-cluster-sealed-secrets [options]
+
+Options:
+    -f, --file PATH                    Input file with Secret YAMLs (Option 1)
+    -o, --output PATH                  Output file for SealedSecrets (default: region-usa/az1/.../dm-dev-common-sealed-secrets.yaml)
+
+    Option 2 - Plain text credentials (all values are plain text):
+    --pc-credentials.username USER    Prism Central username (plain text)
+    --pc-credentials.password PASS    Prism Central password (plain text)
+    --konnector-agent.username USER   Konnector agent username (plain text)
+    --konnector-agent.password PASS   Konnector agent password (plain text)
+    --csi.key KEY                      CSI key in format: endpoint:port:username:password (plain text)
+    --image-registry.username USER    Image registry username (plain text)
+    --image-registry.password PASS    Image registry password (plain text)
+
+    -k, --kubeconfig PATH             Path to kubeconfig file
+    --cluster-name NAME               Cluster name for key file naming (default: auto-detect from kubeconfig)
+    -h, --help                        Show this help message
+
+Modes:
+    Option 1: Process file
+        Reads a file containing Secret YAMLs (separated by ---), seals each Secret,
+        and writes SealedSecrets to output file.
+
+        Example:
+            $0 generate-cluster-sealed-secrets -f secrets.yaml -o sealed-secrets.yaml
+
+    Option 2: Create from arguments
+        Reads the default input file structure, updates secrets with provided
+        plain text values, seals them, and writes to output file.
+
+        Example:
+            $0 generate-cluster-sealed-secrets \\
+                --pc-credentials.username "user" \\
+                --pc-credentials.password "pass" \\
+                --output sealed-secrets.yaml
+
+Note: All input values should be in plain text. The script will:
+  - For pc-credentials: Create JSON structure and base64 encode it
+  - For other secrets: Base64 encode the plain text values
+EOF
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Error: Unknown option: $1${NC}"
+                exit 1
+                ;;
+        esac
+    done
+
+    check_prerequisites
+    set_kubeconfig
+
+    if ! command -v yq &> /dev/null; then
+        echo -e "${RED}✗ yq not found. Please install it:${NC}"
+        echo -e "${YELLOW}  brew install yq${NC}"
+        exit 1
+    fi
+
+    if ! kubectl get namespace "$SEALED_SECRETS_NS" &> /dev/null; then
+        echo -e "${RED}✗ Namespace $SEALED_SECRETS_NS does not exist${NC}"
+        exit 1
+    fi
+
+    print_header "Generate Sealed Secrets"
+
+    # Determine cluster name for key file naming
+    if [[ -z "$CLUSTER_NAME" ]]; then
+        # Try to extract cluster name from kubeconfig context
+        CLUSTER_NAME=$(kubectl config view --minify -o jsonpath='{.contexts[0].context.cluster}' 2>/dev/null || echo "default")
+        # Clean up cluster name (remove protocol, port, etc.)
+        CLUSTER_NAME=$(echo "$CLUSTER_NAME" | sed 's|https\?://||' | sed 's|:.*||' | sed 's|[^a-zA-Z0-9-]|-|g' | head -c 50)
+        if [[ -z "$CLUSTER_NAME" ]] || [[ "$CLUSTER_NAME" == "default" ]]; then
+            CLUSTER_NAME="cluster-$(date +%Y%m%d-%H%M%S)"
+        fi
+    fi
+
+    # Set key file paths
+    PRIVATE_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-key-backup-${CLUSTER_NAME}.yaml"
+    PUBLIC_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-public-key-${CLUSTER_NAME}.pem"
+
+    # Ensure do-not-checkin-folder exists
+    mkdir -p "$KEY_STORAGE_DIR"
+
+    echo -e "${CYAN}Fetching sealed-secrets keys from cluster...${NC}"
+
+    # Fetch the active private key from cluster
+    ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+    if [[ -z "$ACTIVE_KEY_NAME" ]]; then
+        echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
+        exit 1
+    fi
+
+    echo -e "${YELLOW}  Using active key: $ACTIVE_KEY_NAME${NC}"
+    echo -e "${YELLOW}  Fetching private key to: $PRIVATE_KEY_FILE${NC}"
+    kubectl get secret "$ACTIVE_KEY_NAME" -n "$SEALED_SECRETS_NS" -o yaml > "$PRIVATE_KEY_FILE" 2>/dev/null || {
+        echo -e "${RED}✗ Failed to fetch private key${NC}"
+        exit 1
+    }
+
+    echo -e "${YELLOW}  Fetching public key to: $PUBLIC_KEY_FILE${NC}"
+    kubeseal --fetch-cert \
+        --controller-name="$SEALED_SECRETS_CTRL" \
+        --controller-namespace="$SEALED_SECRETS_NS" \
+        > "$PUBLIC_KEY_FILE" 2>/dev/null || {
+        echo -e "${RED}✗ Failed to fetch public key${NC}"
+        exit 1
+    }
+
+    echo -e "${GREEN}✓ Keys fetched successfully${NC}"
+    echo -e "${CYAN}  Private key: $PRIVATE_KEY_FILE${NC}"
+    echo -e "${CYAN}  Public key: $PUBLIC_KEY_FILE${NC}"
+    echo ""
+
+    # Function to seal a secret from YAML using the fetched public key
+    seal_secret_from_yaml() {
+        local secret_yaml="$1"
+        local temp_file=$(mktemp)
+        echo "$secret_yaml" > "$temp_file"
+        kubeseal \
+            --format=yaml \
+            --cert="$PUBLIC_KEY_FILE" \
+            < "$temp_file"
+        rm -f "$temp_file"
+    }
+
+    # Option 1: Process file
+    if [[ -n "${INPUT_FILE:-}" ]] && [[ -f "$INPUT_FILE" ]] && [[ -z "${PC_CREDS_USERNAME:-}" ]]; then
+        echo -e "${CYAN}Processing file: $INPUT_FILE${NC}"
+        local temp_yaml=$(mktemp)
+        local sealed_secrets=()
+        local doc=""
+
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            if [[ "$line" == "---" ]]; then
+                if [[ -n "$doc" ]]; then
+                    echo "$doc" > "$temp_yaml"
+                    local kind=$(yq '.kind // ""' "$temp_yaml" 2>/dev/null || echo "")
+                    if [[ "$kind" == "Secret" ]]; then
+                        local secret_name=$(yq '.metadata.name // ""' "$temp_yaml" 2>/dev/null || echo "")
+                        if [[ -n "$secret_name" ]]; then
+                            echo -e "${YELLOW}  Sealing secret: $secret_name${NC}"
+                            local sealed=$(seal_secret_from_yaml "$doc")
+                            sealed_secrets+=("$sealed")
+                        fi
+                    fi
+                fi
+                doc=""
+            else
+                if [[ -n "$doc" ]]; then
+                    doc+=$'\n'"$line"
+                else
+                    doc="$line"
+                fi
+            fi
+        done < "$INPUT_FILE"
+
+        # Process last document
+        if [[ -n "$doc" ]]; then
+            echo "$doc" > "$temp_yaml"
+            local kind=$(yq '.kind // ""' "$temp_yaml" 2>/dev/null || echo "")
+            if [[ "$kind" == "Secret" ]]; then
+                local secret_name=$(yq '.metadata.name // ""' "$temp_yaml" 2>/dev/null || echo "")
+                if [[ -n "$secret_name" ]]; then
+                    echo -e "${YELLOW}  Sealing secret: $secret_name${NC}"
+                    local sealed=$(seal_secret_from_yaml "$doc")
+                    sealed_secrets+=("$sealed")
+                fi
+            fi
+        fi
+
+        rm -f "$temp_yaml"
+
+        > "$OUTPUT_FILE"
+        for i in "${!sealed_secrets[@]}"; do
+            echo "${sealed_secrets[$i]}"
+            if [[ $i -lt $((${#sealed_secrets[@]} - 1)) ]]; then
+                echo "---"
+            fi
+        done > "$OUTPUT_FILE"
+
+        echo -e "${GREEN}✓ Sealed secrets written to: $OUTPUT_FILE${NC}"
+        echo ""
+        echo -e "${CYAN}Key Information:${NC}"
+        echo -e "  Private key: $PRIVATE_KEY_FILE"
+        echo -e "  Public key: $PUBLIC_KEY_FILE"
+        echo -e "  Active key name: $ACTIVE_KEY_NAME"
+        return 0
+    fi
+
+    # Option 2: Create from arguments
+    echo -e "${CYAN}Creating secrets from command-line arguments${NC}"
+
+    local DEFAULT_INPUT_FILE="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/do-not-checkin-folder/dm-dev-common-secrets.yaml"
+    if [[ ! -f "$DEFAULT_INPUT_FILE" ]]; then
+        echo -e "${RED}✗ Input file does not exist: $DEFAULT_INPUT_FILE${NC}"
+        exit 1
+    fi
+
+    local temp_yaml=$(mktemp)
+    local temp_updated=$(mktemp)
+    local secrets_yaml=""
+    local doc=""
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == "---" ]]; then
+            if [[ -n "$doc" ]]; then
+                echo "$doc" > "$temp_yaml"
+                local kind=$(yq '.kind // ""' "$temp_yaml" 2>/dev/null || echo "")
+                if [[ "$kind" == "Secret" ]]; then
+                    local secret_name=$(yq '.metadata.name // ""' "$temp_yaml" 2>/dev/null || echo "")
+                    if [[ -n "$secret_name" ]]; then
+                        cp "$temp_yaml" "$temp_updated"
+
+                        case "$secret_name" in
+                            dm-dev-pc-credentials)
+                                if [[ -n "${PC_CREDS_USERNAME:-}" ]] && [[ -n "${PC_CREDS_PASSWORD:-}" ]]; then
+                                    local creds_json=$(echo -n "[{\"type\":\"basic_auth\",\"data\":{\"prismCentral\":{\"username\":\"${PC_CREDS_USERNAME}\",\"password\":\"${PC_CREDS_PASSWORD}\"}}}]" | base64 | tr -d '\n')
+                                    yq eval ".data.credentials = \"$creds_json\"" -i "$temp_updated"
+                                    echo -e "${YELLOW}  Updated $secret_name${NC}"
+                                fi
+                                ;;
+                            dm-dev-pc-credentials-for-konnector-agent)
+                                if [[ -n "${KONNECTOR_USERNAME:-}" ]] && [[ -n "${KONNECTOR_PASSWORD:-}" ]]; then
+                                    local user_b64=$(echo -n "${KONNECTOR_USERNAME}" | base64 | tr -d '\n')
+                                    local pass_b64=$(echo -n "${KONNECTOR_PASSWORD}" | base64 | tr -d '\n')
+                                    yq eval ".data.username = \"$user_b64\" | .data.password = \"$pass_b64\"" -i "$temp_updated"
+                                    echo -e "${YELLOW}  Updated $secret_name${NC}"
+                                fi
+                                ;;
+                            dm-dev-pc-credentials-for-csi)
+                                if [[ -n "${CSI_KEY:-}" ]]; then
+                                    local key_b64=$(echo -n "${CSI_KEY}" | base64 | tr -d '\n')
+                                    yq eval ".data.key = \"$key_b64\"" -i "$temp_updated"
+                                    echo -e "${YELLOW}  Updated $secret_name${NC}"
+                                fi
+                                ;;
+                            dm-dev-image-registry-credentials)
+                                if [[ -n "${IMAGE_REGISTRY_USERNAME:-}" ]] && [[ -n "${IMAGE_REGISTRY_PASSWORD:-}" ]]; then
+                                    local user_b64=$(echo -n "${IMAGE_REGISTRY_USERNAME}" | base64 | tr -d '\n')
+                                    local pass_b64=$(echo -n "${IMAGE_REGISTRY_PASSWORD}" | base64 | tr -d '\n')
+                                    yq eval ".data.username = \"$user_b64\" | .data.password = \"$pass_b64\"" -i "$temp_updated"
+                                    echo -e "${YELLOW}  Updated $secret_name${NC}"
+                                fi
+                                ;;
+                        esac
+
+                        echo -e "${YELLOW}  Sealing secret: $secret_name${NC}"
+                        local sealed=$(seal_secret_from_yaml "$(cat "$temp_updated")")
+                        secrets_yaml+="$sealed"$'\n'"---"$'\n'
+                    fi
+                fi
+            fi
+            doc=""
+        else
+            if [[ -n "$doc" ]]; then
+                doc+=$'\n'"$line"
+            else
+                doc="$line"
+            fi
+        fi
+    done < "$DEFAULT_INPUT_FILE"
+
+    # Process last document
+    if [[ -n "$doc" ]]; then
+        echo "$doc" > "$temp_yaml"
+        local kind=$(yq '.kind // ""' "$temp_yaml" 2>/dev/null || echo "")
+        if [[ "$kind" == "Secret" ]]; then
+            local secret_name=$(yq '.metadata.name // ""' "$temp_yaml" 2>/dev/null || echo "")
+            if [[ -n "$secret_name" ]]; then
+                cp "$temp_yaml" "$temp_updated"
+
+                case "$secret_name" in
+                    dm-dev-pc-credentials)
+                        if [[ -n "${PC_CREDS_USERNAME:-}" ]] && [[ -n "${PC_CREDS_PASSWORD:-}" ]]; then
+                            local creds_json=$(echo -n "[{\"type\":\"basic_auth\",\"data\":{\"prismCentral\":{\"username\":\"${PC_CREDS_USERNAME}\",\"password\":\"${PC_CREDS_PASSWORD}\"}}}]" | base64 | tr -d '\n')
+                            yq eval ".data.credentials = \"$creds_json\"" -i "$temp_updated"
+                            echo -e "${YELLOW}  Updated $secret_name${NC}"
+                        fi
+                        ;;
+                    dm-dev-pc-credentials-for-konnector-agent)
+                        if [[ -n "${KONNECTOR_USERNAME:-}" ]] && [[ -n "${KONNECTOR_PASSWORD:-}" ]]; then
+                            local user_b64=$(echo -n "${KONNECTOR_USERNAME}" | base64 | tr -d '\n')
+                            local pass_b64=$(echo -n "${KONNECTOR_PASSWORD}" | base64 | tr -d '\n')
+                            yq eval ".data.username = \"$user_b64\" | .data.password = \"$pass_b64\"" -i "$temp_updated"
+                            echo -e "${YELLOW}  Updated $secret_name${NC}"
+                        fi
+                        ;;
+                    dm-dev-pc-credentials-for-csi)
+                        if [[ -n "${CSI_KEY:-}" ]]; then
+                            local key_b64=$(echo -n "${CSI_KEY}" | base64 | tr -d '\n')
+                            yq eval ".data.key = \"$key_b64\"" -i "$temp_updated"
+                            echo -e "${YELLOW}  Updated $secret_name${NC}"
+                        fi
+                        ;;
+                    dm-dev-image-registry-credentials)
+                        if [[ -n "${IMAGE_REGISTRY_USERNAME:-}" ]] && [[ -n "${IMAGE_REGISTRY_PASSWORD:-}" ]]; then
+                            local user_b64=$(echo -n "${IMAGE_REGISTRY_USERNAME}" | base64 | tr -d '\n')
+                            local pass_b64=$(echo -n "${IMAGE_REGISTRY_PASSWORD}" | base64 | tr -d '\n')
+                            yq eval ".data.username = \"$user_b64\" | .data.password = \"$pass_b64\"" -i "$temp_updated"
+                            echo -e "${YELLOW}  Updated $secret_name${NC}"
+                        fi
+                        ;;
+                esac
+
+                echo -e "${YELLOW}  Sealing secret: $secret_name${NC}"
+                local sealed=$(seal_secret_from_yaml "$(cat "$temp_updated")")
+                secrets_yaml+="$sealed"
+            fi
+        fi
+    fi
+
+    rm -f "$temp_yaml" "$temp_updated"
+
+    # Remove trailing ---
+    secrets_yaml=$(echo -n "$secrets_yaml" | sed '$ { /^---$/d; }')
+
+    echo -e "${CYAN}Writing SealedSecrets to: $OUTPUT_FILE${NC}"
+    echo -n "$secrets_yaml" > "$OUTPUT_FILE"
+
+    echo -e "${GREEN}✓ Sealed secrets written to: $OUTPUT_FILE${NC}"
+    echo ""
+    echo -e "${CYAN}Key Information:${NC}"
+    echo -e "  Private key: $PRIVATE_KEY_FILE"
+    echo -e "  Public key: $PUBLIC_KEY_FILE"
+    echo -e "  Active key name: $ACTIVE_KEY_NAME"
+}
+
+# ============================================================================
+# GENERATE-NDK-SEALED-SECRETS COMMAND
+# ============================================================================
+cmd_generate_ndk_sealed_secrets() {
+    local USERNAME=""
+    local PASSWORD=""
+    local REGISTRY_URL="${REGISTRY_URL:-registry.nutanix.com}"
+    local OUTPUT_FILE="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/applications/nkp-nutanix-products-catalog-applications/ndk/ndk-image-pull-secret.yaml"
+    local SEALED_SECRETS_NS="sealed-secrets-system"
+    local SEALED_SECRETS_CTRL="sealed-secrets-controller"
+    local KEY_STORAGE_DIR="$DEFAULT_DO_NOT_CHECKIN_DIR"
+    local CLUSTER_NAME=""
+    local PRIVATE_KEY_FILE=""
+    local PUBLIC_KEY_FILE=""
+
+    # Parse options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --username)
+                USERNAME="$2"
+                shift 2
+                ;;
+            --password)
+                PASSWORD="$2"
+                shift 2
+                ;;
+            --registry-url)
+                REGISTRY_URL="$2"
+                shift 2
+                ;;
+            -o|--output)
+                OUTPUT_FILE="$2"
+                shift 2
+                ;;
+            -k|--kubeconfig)
+                KUBECONFIG="$2"
+                shift 2
+                ;;
+            --cluster-name)
+                CLUSTER_NAME="$2"
+                shift 2
+                ;;
+            -h|--help)
+                cat << EOF
+Generate NDK Image Pull Sealed Secret
+
+Generates a SealedSecret for NDK image pull credentials with cluster-wide scope.
+
+Usage:
+    $0 generate-ndk-sealed-secrets [options]
+
+Options:
+    --username USER           Registry username (plain text, required)
+    --password PASS           Registry password (plain text, required)
+    --registry-url URL         Registry URL (default: registry.nutanix.com)
+    -o, --output PATH         Output file (default: region-usa/az1/.../ndk/ndk-image-pull-secret.yaml)
+    -k, --kubeconfig PATH     Path to kubeconfig file
+    --cluster-name NAME       Cluster name for key file naming (default: auto-detect)
+    -h, --help                Show this help message
+
+Example:
+    $0 generate-ndk-sealed-secrets \\
+        --username "myuser" \\
+        --password "mypass" \\
+        --registry-url "registry.nutanix.com"
+EOF
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Error: Unknown option: $1${NC}"
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ -z "$USERNAME" ]] || [[ -z "$PASSWORD" ]]; then
+        echo -e "${RED}✗ Username and password are required${NC}"
+        exit 1
+    fi
+
+    check_prerequisites
+    set_kubeconfig
+
+    if ! kubectl get namespace "$SEALED_SECRETS_NS" &> /dev/null; then
+        echo -e "${RED}✗ Namespace $SEALED_SECRETS_NS does not exist${NC}"
+        exit 1
+    fi
+
+    print_header "Generate NDK Image Pull Sealed Secret"
+
+    # Determine cluster name for key file naming
+    if [[ -z "$CLUSTER_NAME" ]]; then
+        CLUSTER_NAME=$(kubectl config view --minify -o jsonpath='{.contexts[0].context.cluster}' 2>/dev/null || echo "default")
+        CLUSTER_NAME=$(echo "$CLUSTER_NAME" | sed 's|https\?://||' | sed 's|:.*||' | sed 's|[^a-zA-Z0-9-]|-|g' | head -c 50)
+        if [[ -z "$CLUSTER_NAME" ]] || [[ "$CLUSTER_NAME" == "default" ]]; then
+            CLUSTER_NAME="cluster-$(date +%Y%m%d-%H%M%S)"
+        fi
+    fi
+
+    # Set key file paths
+    PRIVATE_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-key-backup-${CLUSTER_NAME}.yaml"
+    PUBLIC_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-public-key-${CLUSTER_NAME}.pem"
+
+    # Ensure do-not-checkin-folder exists
+    mkdir -p "$KEY_STORAGE_DIR"
+
+    echo -e "${CYAN}Fetching sealed-secrets keys from cluster...${NC}"
+
+    # Fetch the active private key from cluster
+    ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+    if [[ -z "$ACTIVE_KEY_NAME" ]]; then
+        echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
+        exit 1
+    fi
+
+    echo -e "${YELLOW}  Using active key: $ACTIVE_KEY_NAME${NC}"
+    echo -e "${YELLOW}  Fetching private key to: $PRIVATE_KEY_FILE${NC}"
+    kubectl get secret "$ACTIVE_KEY_NAME" -n "$SEALED_SECRETS_NS" -o yaml > "$PRIVATE_KEY_FILE" 2>/dev/null || {
+        echo -e "${RED}✗ Failed to fetch private key${NC}"
+        exit 1
+    }
+
+    echo -e "${YELLOW}  Fetching public key to: $PUBLIC_KEY_FILE${NC}"
+    kubeseal --fetch-cert \
+        --controller-name="$SEALED_SECRETS_CTRL" \
+        --controller-namespace="$SEALED_SECRETS_NS" \
+        > "$PUBLIC_KEY_FILE" 2>/dev/null || {
+        echo -e "${RED}✗ Failed to fetch public key${NC}"
+        exit 1
+    }
+
+    echo -e "${GREEN}✓ Keys fetched successfully${NC}"
+    echo -e "${CYAN}  Private key: $PRIVATE_KEY_FILE${NC}"
+    echo -e "${CYAN}  Public key: $PUBLIC_KEY_FILE${NC}"
+    echo ""
+
+    # Create dockerconfigjson
+    echo -e "${CYAN}Creating dockerconfigjson secret...${NC}"
+    local AUTH=$(echo -n "$USERNAME:$PASSWORD" | base64 | tr -d '\n')
+
+    # Create dockerconfigjson - use jq if available, otherwise construct manually
+    local DOCKERCONFIGJSON=""
+    if command -v jq &> /dev/null; then
+        DOCKERCONFIGJSON=$(cat <<EOF | jq -c .
+{
+  "auths": {
+    "$REGISTRY_URL": {
+      "username": "$USERNAME",
+      "password": "$PASSWORD",
+      "auth": "$AUTH"
+    }
+  }
+}
+EOF
+)
+    else
+        # Manual JSON construction (no jq dependency)
+        DOCKERCONFIGJSON="{\"auths\":{\"$REGISTRY_URL\":{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\",\"auth\":\"$AUTH\"}}}"
+    fi
+
+    # Create Secret YAML
+    local TEMP_SECRET=$(mktemp)
+    local DOCKERCONFIGJSON_B64=$(echo -n "$DOCKERCONFIGJSON" | base64 | tr -d '\n')
+    cat > "$TEMP_SECRET" <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ndk-image-pull-secret
+  namespace: ntnx-system
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: $DOCKERCONFIGJSON_B64
+EOF
+
+    # Seal the secret with cluster-wide scope
+    echo -e "${CYAN}Sealing secret with cluster-wide scope...${NC}"
+    kubeseal \
+        --format=yaml \
+        --cert="$PUBLIC_KEY_FILE" \
+        --scope cluster-wide \
+        < "$TEMP_SECRET" > "$OUTPUT_FILE" || {
+        echo -e "${RED}✗ Failed to seal secret${NC}"
+        rm -f "$TEMP_SECRET"
+        exit 1
+    }
+
+    # Add header comment and ensure annotations
+    {
+        echo "# SealedSecret for NDK image registry credentials"
+        echo "# This sealed secret uses cluster-wide scope so it can be used from any namespace"
+        echo "# NOTE: This requires all target clusters to have the same sealed-secrets controller private key."
+        echo "---"
+        cat "$OUTPUT_FILE"
+    } > "${OUTPUT_FILE}.tmp" && mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
+
+    # Ensure the template has the correct annotations using yq if available
+    if command -v yq &> /dev/null; then
+        yq eval '.metadata.annotations."sealedsecrets.bitnami.com/cluster-wide" = "true"' -i "$OUTPUT_FILE" 2>/dev/null || true
+        yq eval '.spec.template.metadata.annotations."sealedsecrets.bitnami.com/cluster-wide" = "true"' -i "$OUTPUT_FILE" 2>/dev/null || true
+    fi
+
+    rm -f "$TEMP_SECRET"
+
+    echo -e "${GREEN}✓ Sealed secret written to: $OUTPUT_FILE${NC}"
+    echo ""
+    echo -e "${CYAN}Key Information:${NC}"
+    echo -e "  Private key: $PRIVATE_KEY_FILE"
+    echo -e "  Public key: $PUBLIC_KEY_FILE"
+    echo -e "  Active key name: $ACTIVE_KEY_NAME"
+    echo -e "  Registry URL: $REGISTRY_URL"
+}
+
+# ============================================================================
+# GENERATE-NAI-SEALED-SECRETS COMMAND
+# ============================================================================
+cmd_generate_nai_sealed_secrets() {
+    local USERNAME=""
+    local PASSWORD=""
+    local REGISTRY_URL="${REGISTRY_URL:-registry.nutanix.com}"
+    local OUTPUT_FILE="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/applications/nkp-nutanix-products-catalog-applications/nutanix-ai/nai-image-pull-secret.yaml"
+    local SEALED_SECRETS_NS="sealed-secrets-system"
+    local SEALED_SECRETS_CTRL="sealed-secrets-controller"
+    local KEY_STORAGE_DIR="$DEFAULT_DO_NOT_CHECKIN_DIR"
+    local CLUSTER_NAME=""
+    local PRIVATE_KEY_FILE=""
+    local PUBLIC_KEY_FILE=""
+
+    # Parse options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --username)
+                USERNAME="$2"
+                shift 2
+                ;;
+            --password)
+                PASSWORD="$2"
+                shift 2
+                ;;
+            --registry-url)
+                REGISTRY_URL="$2"
+                shift 2
+                ;;
+            -o|--output)
+                OUTPUT_FILE="$2"
+                shift 2
+                ;;
+            -k|--kubeconfig)
+                KUBECONFIG="$2"
+                shift 2
+                ;;
+            --cluster-name)
+                CLUSTER_NAME="$2"
+                shift 2
+                ;;
+            -h|--help)
+                cat << EOF
+Generate NAI Image Pull Sealed Secret
+
+Generates a SealedSecret for NAI image pull credentials with cluster-wide scope.
+
+Usage:
+    $0 generate-nai-sealed-secrets [options]
+
+Options:
+    --username USER           Registry username (plain text, required)
+    --password PASS           Registry password (plain text, required)
+    --registry-url URL        Registry URL (default: registry.nutanix.com)
+    -o, --output PATH         Output file (default: region-usa/az1/.../nutanix-ai/nai-image-pull-secret.yaml)
+    -k, --kubeconfig PATH     Path to kubeconfig file
+    --cluster-name NAME       Cluster name for key file naming (default: auto-detect)
+    -h, --help                Show this help message
+
+Example:
+    $0 generate-nai-sealed-secrets \\
+        --username "myuser" \\
+        --password "mypass" \\
+        --registry-url "registry.nutanix.com"
+EOF
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Error: Unknown option: $1${NC}"
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ -z "$USERNAME" ]] || [[ -z "$PASSWORD" ]]; then
+        echo -e "${RED}✗ Username and password are required${NC}"
+        exit 1
+    fi
+
+    check_prerequisites
+    set_kubeconfig
+
+    if ! kubectl get namespace "$SEALED_SECRETS_NS" &> /dev/null; then
+        echo -e "${RED}✗ Namespace $SEALED_SECRETS_NS does not exist${NC}"
+        exit 1
+    fi
+
+    print_header "Generate NAI Image Pull Sealed Secret"
+
+    # Determine cluster name for key file naming
+    if [[ -z "$CLUSTER_NAME" ]]; then
+        CLUSTER_NAME=$(kubectl config view --minify -o jsonpath='{.contexts[0].context.cluster}' 2>/dev/null || echo "default")
+        CLUSTER_NAME=$(echo "$CLUSTER_NAME" | sed 's|https\?://||' | sed 's|:.*||' | sed 's|[^a-zA-Z0-9-]|-|g' | head -c 50)
+        if [[ -z "$CLUSTER_NAME" ]] || [[ "$CLUSTER_NAME" == "default" ]]; then
+            CLUSTER_NAME="cluster-$(date +%Y%m%d-%H%M%S)"
+        fi
+    fi
+
+    # Set key file paths
+    PRIVATE_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-key-backup-${CLUSTER_NAME}.yaml"
+    PUBLIC_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-public-key-${CLUSTER_NAME}.pem"
+
+    # Ensure do-not-checkin-folder exists
+    mkdir -p "$KEY_STORAGE_DIR"
+
+    echo -e "${CYAN}Fetching sealed-secrets keys from cluster...${NC}"
+
+    # Fetch the active private key from cluster
+    ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+    if [[ -z "$ACTIVE_KEY_NAME" ]]; then
+        echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
+        exit 1
+    fi
+
+    echo -e "${YELLOW}  Using active key: $ACTIVE_KEY_NAME${NC}"
+    echo -e "${YELLOW}  Fetching private key to: $PRIVATE_KEY_FILE${NC}"
+    kubectl get secret "$ACTIVE_KEY_NAME" -n "$SEALED_SECRETS_NS" -o yaml > "$PRIVATE_KEY_FILE" 2>/dev/null || {
+        echo -e "${RED}✗ Failed to fetch private key${NC}"
+        exit 1
+    }
+
+    echo -e "${YELLOW}  Fetching public key to: $PUBLIC_KEY_FILE${NC}"
+    kubeseal --fetch-cert \
+        --controller-name="$SEALED_SECRETS_CTRL" \
+        --controller-namespace="$SEALED_SECRETS_NS" \
+        > "$PUBLIC_KEY_FILE" 2>/dev/null || {
+        echo -e "${RED}✗ Failed to fetch public key${NC}"
+        exit 1
+    }
+
+    echo -e "${GREEN}✓ Keys fetched successfully${NC}"
+    echo -e "${CYAN}  Private key: $PRIVATE_KEY_FILE${NC}"
+    echo -e "${CYAN}  Public key: $PUBLIC_KEY_FILE${NC}"
+    echo ""
+
+    # Create dockerconfigjson
+    echo -e "${CYAN}Creating dockerconfigjson secret...${NC}"
+    local AUTH=$(echo -n "$USERNAME:$PASSWORD" | base64 | tr -d '\n')
+
+    # Create dockerconfigjson - use jq if available, otherwise construct manually
+    local DOCKERCONFIGJSON=""
+    if command -v jq &> /dev/null; then
+        DOCKERCONFIGJSON=$(cat <<EOF | jq -c .
+{
+  "auths": {
+    "$REGISTRY_URL": {
+      "username": "$USERNAME",
+      "password": "$PASSWORD",
+      "auth": "$AUTH"
+    }
+  }
+}
+EOF
+)
+    else
+        # Manual JSON construction (no jq dependency)
+        DOCKERCONFIGJSON="{\"auths\":{\"$REGISTRY_URL\":{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\",\"auth\":\"$AUTH\"}}}"
+    fi
+
+    # Create Secret YAML
+    local TEMP_SECRET=$(mktemp)
+    local DOCKERCONFIGJSON_B64=$(echo -n "$DOCKERCONFIGJSON" | base64 | tr -d '\n')
+    cat > "$TEMP_SECRET" <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nai-image-pull-secret
+  namespace: nai-system
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: $DOCKERCONFIGJSON_B64
+EOF
+
+    # Seal the secret with cluster-wide scope
+    echo -e "${CYAN}Sealing secret with cluster-wide scope...${NC}"
+    kubeseal \
+        --format=yaml \
+        --cert="$PUBLIC_KEY_FILE" \
+        --scope cluster-wide \
+        < "$TEMP_SECRET" > "$OUTPUT_FILE" || {
+        echo -e "${RED}✗ Failed to seal secret${NC}"
+        rm -f "$TEMP_SECRET"
+        exit 1
+    }
+
+    # Add header comment
+    {
+        echo "# SealedSecret for NAI image registry credentials"
+        echo "# This sealed secret uses cluster-wide scope so it can be used from any namespace"
+        echo "# NOTE: This requires all target clusters to have the same sealed-secrets controller private key."
+        echo "---"
+        cat "$OUTPUT_FILE"
+    } > "${OUTPUT_FILE}.tmp" && mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
+
+    # Ensure the template has the correct annotations using yq if available
+    if command -v yq &> /dev/null; then
+        yq eval '.metadata.annotations."sealedsecrets.bitnami.com/cluster-wide" = "true"' -i "$OUTPUT_FILE" 2>/dev/null || true
+        yq eval '.spec.template.metadata.annotations."sealedsecrets.bitnami.com/cluster-wide" = "true"' -i "$OUTPUT_FILE" 2>/dev/null || true
+    fi
+
+    rm -f "$TEMP_SECRET"
+
+    echo -e "${GREEN}✓ Sealed secret written to: $OUTPUT_FILE${NC}"
+    echo ""
+    echo -e "${CYAN}Key Information:${NC}"
+    echo -e "  Private key: $PRIVATE_KEY_FILE"
+    echo -e "  Public key: $PUBLIC_KEY_FILE"
+    echo -e "  Active key name: $ACTIVE_KEY_NAME"
+    echo -e "  Registry URL: $REGISTRY_URL"
+}
+
+# ============================================================================
 # MAIN
 # ============================================================================
 main() {
@@ -888,19 +1715,24 @@ Usage:
     $0 <command> [options]
 
 Commands:
-    backup          Backup sealed-secrets controller keys (public & private)
-    restore         Restore sealed-secrets keys from backup
-    encrypt         Encrypt a plaintext secret YAML file
-    decrypt         Decrypt a sealed secret YAML file (requires keys)
-    re-encrypt      Re-encrypt secrets with new credentials
-    status          Check status of sealed secrets in cluster
+    backup                        Backup sealed-secrets controller keys (public & private)
+    restore                       Restore sealed-secrets keys from backup
+    generate-cluster-sealed-secrets  Generate SealedSecrets for cluster credentials (PC, Konnector, CSI, Image Registry)
+    generate-ndk-sealed-secrets    Generate SealedSecret for NDK image pull credentials
+    generate-nai-sealed-secrets    Generate SealedSecret for NAI image pull credentials
+    decrypt                       Decrypt a sealed secret YAML file (requires keys)
+    re-encrypt                    Re-encrypt secrets with new credentials
+    status                        Check status of sealed secrets in cluster
 
 Use '$0 <command> --help' for command-specific help.
 
 Examples:
     $0 backup
     $0 restore
-    $0 encrypt -f secret.yaml -o sealed-secret.yaml
+    $0 generate-cluster-sealed-secrets -f secrets.yaml -o sealed-secrets.yaml
+    $0 generate-cluster-sealed-secrets --pc-credentials.username "user" --pc-credentials.password "pass"
+    $0 generate-ndk-sealed-secrets --username "user" --password "pass"
+    $0 generate-nai-sealed-secrets --username "user" --password "pass"
     $0 decrypt -f sealed-secret.yaml -o secret.yaml
     $0 re-encrypt
     $0 status
@@ -918,8 +1750,26 @@ EOF
         restore)
             cmd_restore "$@"
             ;;
+        generate-cluster-sealed-secrets)
+            cmd_generate_cluster_sealed_secrets "$@"
+            ;;
+        generate-ndk-sealed-secrets)
+            cmd_generate_ndk_sealed_secrets "$@"
+            ;;
+        generate-nai-sealed-secrets)
+            cmd_generate_nai_sealed_secrets "$@"
+            ;;
+        generate-sealed-secrets)
+            # Alias for generate-cluster-sealed-secrets (backward compatibility)
+            echo -e "${YELLOW}Note: 'generate-sealed-secrets' is deprecated. Use 'generate-cluster-sealed-secrets' instead.${NC}"
+            echo ""
+            cmd_generate_cluster_sealed_secrets "$@"
+            ;;
         encrypt)
-            cmd_encrypt "$@"
+            # Alias for generate-cluster-sealed-secrets -f (backward compatibility)
+            echo -e "${YELLOW}Note: 'encrypt' is deprecated. Use 'generate-cluster-sealed-secrets' instead.${NC}"
+            echo ""
+            cmd_generate_cluster_sealed_secrets "$@"
             ;;
         decrypt)
             cmd_decrypt "$@"
