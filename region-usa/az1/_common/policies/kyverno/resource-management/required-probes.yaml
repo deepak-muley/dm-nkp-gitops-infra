@@ -54,22 +54,19 @@ spec:
         message: >-
           A readinessProbe is required for all containers. This determines when the
           container is ready to accept traffic.
-        anyOf:
-          - pattern:
-              spec:
-                containers:
-                  - readinessProbe:
-                      httpGet: "*"
-          - pattern:
-              spec:
-                containers:
-                  - readinessProbe:
-                      tcpSocket: "*"
-          - pattern:
-              spec:
-                containers:
-                  - readinessProbe:
-                      exec: "*"
+        anyPattern:
+          - spec:
+              containers:
+                - readinessProbe:
+                    httpGet: "*"
+          - spec:
+              containers:
+                - readinessProbe:
+                    tcpSocket: "*"
+          - spec:
+              containers:
+                - readinessProbe:
+                    exec: "*"
     - name: require-liveness-probe
       match:
         any:
@@ -102,20 +99,17 @@ spec:
         message: >-
           A livenessProbe is required for all containers. This determines when to
           restart a container that is unhealthy.
-        anyOf:
-          - pattern:
-              spec:
-                containers:
-                  - livenessProbe:
-                      httpGet: "*"
-          - pattern:
-              spec:
-                containers:
-                  - livenessProbe:
-                      tcpSocket: "*"
-          - pattern:
-              spec:
-                containers:
-                  - livenessProbe:
-                      exec: "*"
+        anyPattern:
+          - spec:
+              containers:
+                - livenessProbe:
+                    httpGet: "*"
+          - spec:
+              containers:
+                - livenessProbe:
+                    tcpSocket: "*"
+          - spec:
+              containers:
+                - livenessProbe:
+                    exec: "*"
 
