@@ -1360,7 +1360,7 @@ cmd_generate_ndk_sealed_secrets() {
     local PASSWORD=""
     local REGISTRY_URL="${REGISTRY_URL:-registry.nutanix.com}"
     local INPUT_FILE=""
-    local OUTPUT_FILE="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/applications/nkp-nutanix-products-catalog-applications/ndk/ndk-image-pull-secret.yaml"
+    local OUTPUT_FILE="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/applications/nkp-nutanix-products-catalog-applications/ndk/ndk-image-pull-sealed-secret.yaml"
     local SEALED_SECRETS_NS="sealed-secrets-system"
     local SEALED_SECRETS_CTRL="sealed-secrets-controller"
     local KEY_STORAGE_DIR="$DEFAULT_DO_NOT_CHECKIN_DIR"
@@ -1414,7 +1414,7 @@ Options:
     --username USER           Registry username (required if --from-file not used)
     --password PASS           Registry password (required if --from-file not used)
     --registry-url URL        Registry URL (default: index.docker.io, auto-detected from file)
-    -o, --output PATH         Output file (default: region-usa/az1/.../ndk/ndk-image-pull-secret.yaml)
+    -o, --output PATH         Output file (default: region-usa/az1/.../ndk/ndk-image-pull-sealed-secret.yaml)
     -k, --kubeconfig PATH     Path to kubeconfig file
     --cluster-name NAME       Cluster name for key file naming (default: auto-detect)
     -h, --help                Show this help message
@@ -1635,7 +1635,7 @@ cmd_generate_nai_sealed_secrets() {
     local PASSWORD=""
     local REGISTRY_URL="${REGISTRY_URL:-index.docker.io}"
     local INPUT_FILE=""
-    local OUTPUT_FILE="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/applications/nkp-nutanix-products-catalog-applications/nutanix-ai/nai-image-pull-secret.yaml"
+    local OUTPUT_FILE="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/applications/nkp-nutanix-products-catalog-applications/nutanix-ai/nai-image-pull-sealed-secret.yaml"
     local SEALED_SECRETS_NS="sealed-secrets-system"
     local SEALED_SECRETS_CTRL="sealed-secrets-controller"
     local KEY_STORAGE_DIR="$DEFAULT_DO_NOT_CHECKIN_DIR"
@@ -1689,7 +1689,7 @@ Options:
     --username USER           Registry username (required if --from-file not used)
     --password PASS           Registry password (required if --from-file not used)
     --registry-url URL        Registry URL (default: index.docker.io, auto-detected from file)
-    -o, --output PATH         Output file (default: region-usa/az1/.../nutanix-ai/nai-image-pull-secret.yaml)
+    -o, --output PATH         Output file (default: region-usa/az1/.../nutanix-ai/nai-image-pull-sealed-secret.yaml)
     -k, --kubeconfig PATH     Path to kubeconfig file
     --cluster-name NAME       Cluster name for key file naming (default: auto-detect)
     -h, --help                Show this help message
@@ -2029,7 +2029,7 @@ EOF
 
     # Extract unseal keys from the input file
     echo -e "${CYAN}Reading unseal keys from: $INPUT_FILE${NC}"
-    
+
     # Extract keys using yq if available, otherwise use grep/sed
     if command -v yq &> /dev/null; then
         KEY1=$(yq eval '.unseal_keys.key_1' "$INPUT_FILE" 2>/dev/null | tr -d '"' || echo "")
