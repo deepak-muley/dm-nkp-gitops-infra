@@ -1413,7 +1413,7 @@ Options:
                               If provided, registry URL, username, and password are auto-detected
     --username USER           Registry username (required if --from-file not used)
     --password PASS           Registry password (required if --from-file not used)
-    --registry-url URL        Registry URL (default: registry-1.docker.io, auto-detected from file)
+    --registry-url URL        Registry URL (default: index.docker.io, auto-detected from file)
     -o, --output PATH         Output file (default: region-usa/az1/.../ndk/ndk-image-pull-secret.yaml)
     -k, --kubeconfig PATH     Path to kubeconfig file
     --cluster-name NAME       Cluster name for key file naming (default: auto-detect)
@@ -1444,7 +1444,7 @@ EOF
             echo -e "${RED}✗ Input file not found: $INPUT_FILE${NC}"
             exit 1
         fi
-        
+
         # Extract registry URL, username, and password from the file
         # Handle both stringData and data formats
         if grep -q "stringData:" "$INPUT_FILE"; then
@@ -1464,10 +1464,10 @@ EOF
             echo -e "${CYAN}Reading secret from file (will seal directly)...${NC}"
             INPUT_FILE_MODE="direct"
         fi
-        
+
         # Default registry if not detected
         if [[ -z "$REGISTRY_URL" ]] || [[ "$REGISTRY_URL" == "null" ]]; then
-            REGISTRY_URL="registry-1.docker.io"
+            REGISTRY_URL="index.docker.io"
         fi
     fi
 
@@ -1549,7 +1549,7 @@ EOF
             echo -e "${GREEN}✓ Extracted registry: $REGISTRY_URL${NC}"
             echo -e "${GREEN}✓ Extracted username: $USERNAME${NC}"
         fi
-        
+
         local AUTH=$(echo -n "$USERNAME:$PASSWORD" | base64 | tr -d '\n')
 
         # Create dockerconfigjson - use jq if available, otherwise construct manually
@@ -1597,7 +1597,7 @@ EOF
             rm -f "$TEMP_SECRET"
             exit 1
         }
-        
+
         rm -f "$TEMP_SECRET"
     fi
 
