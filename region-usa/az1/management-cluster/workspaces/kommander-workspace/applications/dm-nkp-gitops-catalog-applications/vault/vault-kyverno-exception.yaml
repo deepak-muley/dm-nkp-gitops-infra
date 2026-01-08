@@ -1,6 +1,6 @@
 # PolicyException to exclude vault namespace from all Kyverno policies
 # This is needed because Kyverno webhook is timing out during Vault installation
-apiVersion: kyverno.io/v2alpha1
+apiVersion: kyverno.io/v2
 kind: PolicyException
 metadata:
   name: vault-exception
