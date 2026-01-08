@@ -567,6 +567,7 @@ cmd_re_encrypt() {
     local NAMESPACE="$DEFAULT_WORKSPACE_NAMESPACE"
     local PC_CREDS_FILE="/Users/deepak.muley/ws/nkp/pc-creds.sh"
     local DOCKERHUB_CREDS_FILE="/Users/deepak.muley/ws/nkp/nkp-mgmt-clusterctl.sh"
+    local SOURCE_SECRETS_FILE="do-not-checkin-folder/dm-dev-common-secrets.yaml"
 
     # Parse options
     while [[ $# -gt 0 ]]; do
@@ -593,8 +594,9 @@ Options:
     -n, --namespace NAME     Namespace (default: $DEFAULT_WORKSPACE_NAMESPACE)
     -h, --help               Show this help message
 
-Credentials are read from:
-    PC: $PC_CREDS_FILE
+Credentials are read from (in order of preference):
+    1. $SOURCE_SECRETS_FILE (decodes base64 from Secret YAML)
+    2. $PC_CREDS_FILE (shell script with environment variables)
     DockerHub: $DOCKERHUB_CREDS_FILE
 
 Examples:
@@ -616,27 +618,60 @@ EOF
 
     echo -e "${CYAN}Reading credentials from files...${NC}"
 
-    # Read PC credentials
-    if [ ! -f "$PC_CREDS_FILE" ]; then
-        echo -e "${RED}✗ PC credentials file not found: $PC_CREDS_FILE${NC}"
-        exit 1
+    # Try reading from source secrets file first (most reliable)
+    if [ -f "$SOURCE_SECRETS_FILE" ]; then
+        echo -e "${CYAN}  Trying source secrets file: $SOURCE_SECRETS_FILE${NC}"
+        # Decode credentials from the source file
+        # The file has secrets separated by ---, credentials field comes before name
+        # Get the first credentials field (for dm-dev-pc-credentials)
+        PC_CREDS_B64=$(grep "^  credentials:" "$SOURCE_SECRETS_FILE" | head -1 | awk '{print $2}')
+        if [ -n "$PC_CREDS_B64" ]; then
+            PC_CREDS_JSON_DECODED=$(echo "$PC_CREDS_B64" | base64 -d 2>/dev/null)
+            if [ -n "$PC_CREDS_JSON_DECODED" ]; then
+                PC_USERNAME=$(echo "$PC_CREDS_JSON_DECODED" | jq -r '.[0].data.prismCentral.username' 2>/dev/null)
+                PC_PASSWORD=$(echo "$PC_CREDS_JSON_DECODED" | jq -r '.[0].data.prismCentral.password' 2>/dev/null)
+                # Extract endpoint from CSI key (first key field)
+                CSI_KEY_B64=$(grep "^  key:" "$SOURCE_SECRETS_FILE" | head -1 | awk '{print $2}')
+                if [ -n "$CSI_KEY_B64" ]; then
+                    CSI_KEY_DECODED=$(echo "$CSI_KEY_B64" | base64 -d 2>/dev/null)
+                    if [ -n "$CSI_KEY_DECODED" ]; then
+                        PC_ENDPOINT=$(echo "$CSI_KEY_DECODED" | cut -d: -f1)
+                        PC_PORT=$(echo "$CSI_KEY_DECODED" | cut -d: -f2)
+                    fi
+                fi
+            fi
+        fi
+        if [ -n "$PC_USERNAME" ] && [ -n "$PC_PASSWORD" ] && [ -n "$PC_ENDPOINT" ]; then
+            echo -e "${GREEN}✓ Read credentials from source secrets file${NC}"
+        fi
     fi
 
-    # Source the PC credentials file to get variables (use bash to source properly)
-    eval "$(bash -c "source $PC_CREDS_FILE 2>/dev/null; echo 'PC_USERNAME='\${NUTANIX_USERNAME:-\${NUTANIX_USER}}; echo 'PC_PASSWORD='\$NUTANIX_PASSWORD; echo 'PC_ENDPOINT='\$NUTANIX_ENDPOINT; echo 'PC_PORT='\${NUTANIX_PORT:-9440}")"
-
+    # Fallback to pc-creds.sh if source file didn't work
     if [ -z "$PC_USERNAME" ] || [ -z "$PC_PASSWORD" ] || [ -z "$PC_ENDPOINT" ]; then
-        echo -e "${RED}✗ Failed to read PC credentials from $PC_CREDS_FILE${NC}"
-        echo -e "${YELLOW}  Trying alternative method...${NC}"
-        # Alternative: parse the file directly
-        PC_USERNAME=$(grep "NUTANIX_USERNAME=" "$PC_CREDS_FILE" | cut -d'"' -f2 || grep "NUTANIX_USER=" "$PC_CREDS_FILE" | cut -d'"' -f2)
-        PC_PASSWORD=$(grep "NUTANIX_PASSWORD=" "$PC_CREDS_FILE" | cut -d'"' -f2)
-        PC_ENDPOINT=$(grep "NUTANIX_ENDPOINT=" "$PC_CREDS_FILE" | cut -d'"' -f2)
-        PC_PORT=$(grep "NUTANIX_PORT=" "$PC_CREDS_FILE" | cut -d'"' -f2 || echo "9440")
+        echo -e "${CYAN}  Trying PC credentials file: $PC_CREDS_FILE${NC}"
+        if [ ! -f "$PC_CREDS_FILE" ]; then
+            echo -e "${RED}✗ PC credentials file not found: $PC_CREDS_FILE${NC}"
+            exit 1
+        fi
+
+        # Source the PC credentials file to get variables (use bash to source properly)
+        eval "$(bash -c "source $PC_CREDS_FILE 2>/dev/null; echo 'PC_USERNAME='\${NUTANIX_USERNAME:-\${NUTANIX_USER}}; echo 'PC_PASSWORD='\$NUTANIX_PASSWORD; echo 'PC_ENDPOINT='\$NUTANIX_ENDPOINT; echo 'PC_PORT='\${NUTANIX_PORT:-9440}")"
+
+        if [ -z "$PC_USERNAME" ] || [ -z "$PC_PASSWORD" ] || [ -z "$PC_ENDPOINT" ]; then
+            echo -e "${YELLOW}  Trying alternative parsing method...${NC}"
+            # Alternative: parse the file directly
+            PC_USERNAME=$(grep "NUTANIX_USERNAME=" "$PC_CREDS_FILE" | cut -d'"' -f2 || grep "NUTANIX_USER=" "$PC_CREDS_FILE" | cut -d'"' -f2)
+            PC_PASSWORD=$(grep "NUTANIX_PASSWORD=" "$PC_CREDS_FILE" | cut -d'"' -f2)
+            PC_ENDPOINT=$(grep "NUTANIX_ENDPOINT=" "$PC_CREDS_FILE" | cut -d'"' -f2)
+            PC_PORT=$(grep "NUTANIX_PORT=" "$PC_CREDS_FILE" | cut -d'"' -f2 || echo "9440")
+        fi
     fi
 
     if [ -z "$PC_USERNAME" ] || [ -z "$PC_PASSWORD" ] || [ -z "$PC_ENDPOINT" ]; then
-        echo -e "${RED}✗ Failed to read PC credentials${NC}"
+        echo -e "${RED}✗ Failed to read PC credentials from both sources${NC}"
+        echo -e "${YELLOW}  Tried:${NC}"
+        echo -e "${YELLOW}    1. $SOURCE_SECRETS_FILE${NC}"
+        echo -e "${YELLOW}    2. $PC_CREDS_FILE${NC}"
         exit 1
     fi
 
