@@ -708,9 +708,17 @@ EOF
     echo -e "${CYAN}Re-encrypting secrets...${NC}"
     echo ""
 
-    # Always use controller service to get the current public key
-    KUBESEAL_ARGS="--controller-name=sealed-secrets-controller --controller-namespace=sealed-secrets-system"
-    echo -e "${CYAN}Using sealed-secrets-controller service to get public key${NC}"
+    # Use public key from do-not-checkin-folder (always up to date with mgmt cluster)
+    PUBLIC_KEY_FILE="do-not-checkin-folder/sealed-secrets-public-key-dm-nkp-mgmt-1.pem"
+    if [ ! -f "$PUBLIC_KEY_FILE" ]; then
+        echo -e "${RED}✗ Public key file not found: $PUBLIC_KEY_FILE${NC}"
+        echo -e "${YELLOW}  Falling back to controller service...${NC}"
+        KUBESEAL_ARGS="--controller-name=sealed-secrets-controller --controller-namespace=sealed-secrets-system"
+    else
+        KUBESEAL_ARGS="--cert=$PUBLIC_KEY_FILE"
+        echo -e "${CYAN}Using public key from: $PUBLIC_KEY_FILE${NC}"
+        echo -e "${GREEN}✓ This ensures secrets are encrypted with the latest mgmt cluster keys${NC}"
+    fi
     echo ""
 
     # Re-encrypt each secret
@@ -1060,42 +1068,39 @@ EOF
         fi
     fi
 
-    # Set key file paths
+    # Set key file paths - use keys from do-not-checkin-folder (always up to date)
+    # Default to dm-nkp-mgmt-1 if cluster name not specified
+    if [[ -z "$CLUSTER_NAME" ]] || [[ "$CLUSTER_NAME" == "default" ]]; then
+        CLUSTER_NAME="dm-nkp-mgmt-1"
+    fi
     PRIVATE_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-key-backup-${CLUSTER_NAME}.yaml"
     PUBLIC_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-public-key-${CLUSTER_NAME}.pem"
 
     # Ensure do-not-checkin-folder exists
     mkdir -p "$KEY_STORAGE_DIR"
 
-    echo -e "${CYAN}Fetching sealed-secrets keys from cluster...${NC}"
-
-    # Fetch the active private key from cluster
-    ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-
-    if [[ -z "$ACTIVE_KEY_NAME" ]]; then
-        echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
-        exit 1
+    # Use public key from do-not-checkin-folder (always up to date with mgmt cluster)
+    if [ ! -f "$PUBLIC_KEY_FILE" ]; then
+        echo -e "${RED}✗ Public key file not found: $PUBLIC_KEY_FILE${NC}"
+        echo -e "${YELLOW}  Falling back to fetching from cluster...${NC}"
+        # Fetch the active private key from cluster
+        ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        if [[ -z "$ACTIVE_KEY_NAME" ]]; then
+            echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
+            exit 1
+        fi
+        echo -e "${YELLOW}  Fetching public key from cluster...${NC}"
+        kubeseal --fetch-cert \
+            --controller-name="$SEALED_SECRETS_CTRL" \
+            --controller-namespace="$SEALED_SECRETS_NS" \
+            > "$PUBLIC_KEY_FILE" 2>/dev/null || {
+            echo -e "${RED}✗ Failed to fetch public key${NC}"
+            exit 1
+        }
+    else
+        echo -e "${CYAN}Using public key from: $PUBLIC_KEY_FILE${NC}"
+        echo -e "${GREEN}✓ This ensures secrets are encrypted with the latest mgmt cluster keys${NC}"
     fi
-
-    echo -e "${YELLOW}  Using active key: $ACTIVE_KEY_NAME${NC}"
-    echo -e "${YELLOW}  Fetching private key to: $PRIVATE_KEY_FILE${NC}"
-    kubectl get secret "$ACTIVE_KEY_NAME" -n "$SEALED_SECRETS_NS" -o yaml > "$PRIVATE_KEY_FILE" 2>/dev/null || {
-        echo -e "${RED}✗ Failed to fetch private key${NC}"
-        exit 1
-    }
-
-    echo -e "${YELLOW}  Fetching public key to: $PUBLIC_KEY_FILE${NC}"
-    kubeseal --fetch-cert \
-        --controller-name="$SEALED_SECRETS_CTRL" \
-        --controller-namespace="$SEALED_SECRETS_NS" \
-        > "$PUBLIC_KEY_FILE" 2>/dev/null || {
-        echo -e "${RED}✗ Failed to fetch public key${NC}"
-        exit 1
-    }
-
-    echo -e "${GREEN}✓ Keys fetched successfully${NC}"
-    echo -e "${CYAN}  Private key: $PRIVATE_KEY_FILE${NC}"
-    echo -e "${CYAN}  Public key: $PUBLIC_KEY_FILE${NC}"
     echo ""
 
     # Function to seal a secret from YAML using the fetched public key
@@ -1411,42 +1416,39 @@ EOF
         fi
     fi
 
-    # Set key file paths
+    # Set key file paths - use keys from do-not-checkin-folder (always up to date)
+    # Default to dm-nkp-mgmt-1 if cluster name not specified
+    if [[ -z "$CLUSTER_NAME" ]] || [[ "$CLUSTER_NAME" == "default" ]]; then
+        CLUSTER_NAME="dm-nkp-mgmt-1"
+    fi
     PRIVATE_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-key-backup-${CLUSTER_NAME}.yaml"
     PUBLIC_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-public-key-${CLUSTER_NAME}.pem"
 
     # Ensure do-not-checkin-folder exists
     mkdir -p "$KEY_STORAGE_DIR"
 
-    echo -e "${CYAN}Fetching sealed-secrets keys from cluster...${NC}"
-
-    # Fetch the active private key from cluster
-    ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-
-    if [[ -z "$ACTIVE_KEY_NAME" ]]; then
-        echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
-        exit 1
+    # Use public key from do-not-checkin-folder (always up to date with mgmt cluster)
+    if [ ! -f "$PUBLIC_KEY_FILE" ]; then
+        echo -e "${RED}✗ Public key file not found: $PUBLIC_KEY_FILE${NC}"
+        echo -e "${YELLOW}  Falling back to fetching from cluster...${NC}"
+        # Fetch the active private key from cluster
+        ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        if [[ -z "$ACTIVE_KEY_NAME" ]]; then
+            echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
+            exit 1
+        fi
+        echo -e "${YELLOW}  Fetching public key from cluster...${NC}"
+        kubeseal --fetch-cert \
+            --controller-name="$SEALED_SECRETS_CTRL" \
+            --controller-namespace="$SEALED_SECRETS_NS" \
+            > "$PUBLIC_KEY_FILE" 2>/dev/null || {
+            echo -e "${RED}✗ Failed to fetch public key${NC}"
+            exit 1
+        }
+    else
+        echo -e "${CYAN}Using public key from: $PUBLIC_KEY_FILE${NC}"
+        echo -e "${GREEN}✓ This ensures secrets are encrypted with the latest mgmt cluster keys${NC}"
     fi
-
-    echo -e "${YELLOW}  Using active key: $ACTIVE_KEY_NAME${NC}"
-    echo -e "${YELLOW}  Fetching private key to: $PRIVATE_KEY_FILE${NC}"
-    kubectl get secret "$ACTIVE_KEY_NAME" -n "$SEALED_SECRETS_NS" -o yaml > "$PRIVATE_KEY_FILE" 2>/dev/null || {
-        echo -e "${RED}✗ Failed to fetch private key${NC}"
-        exit 1
-    }
-
-    echo -e "${YELLOW}  Fetching public key to: $PUBLIC_KEY_FILE${NC}"
-    kubeseal --fetch-cert \
-        --controller-name="$SEALED_SECRETS_CTRL" \
-        --controller-namespace="$SEALED_SECRETS_NS" \
-        > "$PUBLIC_KEY_FILE" 2>/dev/null || {
-        echo -e "${RED}✗ Failed to fetch public key${NC}"
-        exit 1
-    }
-
-    echo -e "${GREEN}✓ Keys fetched successfully${NC}"
-    echo -e "${CYAN}  Private key: $PRIVATE_KEY_FILE${NC}"
-    echo -e "${CYAN}  Public key: $PUBLIC_KEY_FILE${NC}"
     echo ""
 
     # Create dockerconfigjson
@@ -1624,42 +1626,39 @@ EOF
         fi
     fi
 
-    # Set key file paths
+    # Set key file paths - use keys from do-not-checkin-folder (always up to date)
+    # Default to dm-nkp-mgmt-1 if cluster name not specified
+    if [[ -z "$CLUSTER_NAME" ]] || [[ "$CLUSTER_NAME" == "default" ]]; then
+        CLUSTER_NAME="dm-nkp-mgmt-1"
+    fi
     PRIVATE_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-key-backup-${CLUSTER_NAME}.yaml"
     PUBLIC_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-public-key-${CLUSTER_NAME}.pem"
 
     # Ensure do-not-checkin-folder exists
     mkdir -p "$KEY_STORAGE_DIR"
 
-    echo -e "${CYAN}Fetching sealed-secrets keys from cluster...${NC}"
-
-    # Fetch the active private key from cluster
-    ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-
-    if [[ -z "$ACTIVE_KEY_NAME" ]]; then
-        echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
-        exit 1
+    # Use public key from do-not-checkin-folder (always up to date with mgmt cluster)
+    if [ ! -f "$PUBLIC_KEY_FILE" ]; then
+        echo -e "${RED}✗ Public key file not found: $PUBLIC_KEY_FILE${NC}"
+        echo -e "${YELLOW}  Falling back to fetching from cluster...${NC}"
+        # Fetch the active private key from cluster
+        ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        if [[ -z "$ACTIVE_KEY_NAME" ]]; then
+            echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
+            exit 1
+        fi
+        echo -e "${YELLOW}  Fetching public key from cluster...${NC}"
+        kubeseal --fetch-cert \
+            --controller-name="$SEALED_SECRETS_CTRL" \
+            --controller-namespace="$SEALED_SECRETS_NS" \
+            > "$PUBLIC_KEY_FILE" 2>/dev/null || {
+            echo -e "${RED}✗ Failed to fetch public key${NC}"
+            exit 1
+        }
+    else
+        echo -e "${CYAN}Using public key from: $PUBLIC_KEY_FILE${NC}"
+        echo -e "${GREEN}✓ This ensures secrets are encrypted with the latest mgmt cluster keys${NC}"
     fi
-
-    echo -e "${YELLOW}  Using active key: $ACTIVE_KEY_NAME${NC}"
-    echo -e "${YELLOW}  Fetching private key to: $PRIVATE_KEY_FILE${NC}"
-    kubectl get secret "$ACTIVE_KEY_NAME" -n "$SEALED_SECRETS_NS" -o yaml > "$PRIVATE_KEY_FILE" 2>/dev/null || {
-        echo -e "${RED}✗ Failed to fetch private key${NC}"
-        exit 1
-    }
-
-    echo -e "${YELLOW}  Fetching public key to: $PUBLIC_KEY_FILE${NC}"
-    kubeseal --fetch-cert \
-        --controller-name="$SEALED_SECRETS_CTRL" \
-        --controller-namespace="$SEALED_SECRETS_NS" \
-        > "$PUBLIC_KEY_FILE" 2>/dev/null || {
-        echo -e "${RED}✗ Failed to fetch public key${NC}"
-        exit 1
-    }
-
-    echo -e "${GREEN}✓ Keys fetched successfully${NC}"
-    echo -e "${CYAN}  Private key: $PRIVATE_KEY_FILE${NC}"
-    echo -e "${CYAN}  Public key: $PUBLIC_KEY_FILE${NC}"
     echo ""
 
     # Create dockerconfigjson
