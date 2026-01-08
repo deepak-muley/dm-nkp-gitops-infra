@@ -47,3 +47,6 @@ region-usa/az1/_common/policies/gatekeeper/SECURITY-ROADMAP.md
 
 # Internal documentation (generated files, not for version control)
 docs/internal/
+
+# Do not checkin folder - contains plain text secrets (NEVER commit)
+do-not-checkin-folder/

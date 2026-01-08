@@ -33,11 +33,14 @@ NC='\033[0m' # No Color
 # Default configuration
 DEFAULT_NAMESPACE="sealed-secrets-system"
 DEFAULT_WORKSPACE_NAMESPACE="dm-dev-workspace"
-DEFAULT_MGMT_KUBECONFIG="/Users/deepak.muley/ws/nkp/dm-nkp-mgmt-1.conf"
-DEFAULT_BACKUP_DIR="/Users/deepak.muley/ws/nkp"
+# Get repo root (assuming script is in scripts/ directory)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DEFAULT_DO_NOT_CHECKIN_DIR="$REPO_ROOT/do-not-checkin-folder"
+# Use do-not-checkin-folder as default backup directory (all within repo)
+DEFAULT_BACKUP_DIR="$DEFAULT_DO_NOT_CHECKIN_DIR"
 DEFAULT_BACKUP_FILE="$DEFAULT_BACKUP_DIR/sealed-secrets-key-backup.yaml"
 DEFAULT_PUBLIC_KEY="$DEFAULT_BACKUP_DIR/sealed-secrets-public-key.pem"
-DEFAULT_DO_NOT_CHECKIN_DIR="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/do-not-checkin-folder"
 
 # Global variables
 KUBECONFIG=""
@@ -565,9 +568,13 @@ EOF
 # ============================================================================
 cmd_re_encrypt() {
     local NAMESPACE="$DEFAULT_WORKSPACE_NAMESPACE"
-    local PC_CREDS_FILE="/Users/deepak.muley/ws/nkp/pc-creds.sh"
-    local DOCKERHUB_CREDS_FILE="/Users/deepak.muley/ws/nkp/nkp-mgmt-clusterctl.sh"
     local SOURCE_SECRETS_FILE="do-not-checkin-folder/dm-dev-common-secrets.yaml"
+    local PC_USERNAME=""
+    local PC_PASSWORD=""
+    local PC_ENDPOINT=""
+    local PC_PORT="9440"
+    local DOCKERHUB_USERNAME=""
+    local DOCKERHUB_PASSWORD=""
 
     # Parse options
     while [[ $# -gt 0 ]]; do
@@ -580,28 +587,59 @@ cmd_re_encrypt() {
                 NAMESPACE="$2"
                 shift 2
                 ;;
+            --pc-username)
+                PC_USERNAME="$2"
+                shift 2
+                ;;
+            --pc-password)
+                PC_PASSWORD="$2"
+                shift 2
+                ;;
+            --pc-endpoint)
+                PC_ENDPOINT="$2"
+                shift 2
+                ;;
+            --pc-port)
+                PC_PORT="$2"
+                shift 2
+                ;;
+            --dockerhub-username)
+                DOCKERHUB_USERNAME="$2"
+                shift 2
+                ;;
+            --dockerhub-password)
+                DOCKERHUB_PASSWORD="$2"
+                shift 2
+                ;;
             -h|--help)
                 cat << EOF
 Re-encrypt Sealed Secrets with New Credentials
 
-Re-encrypts sealed secrets with credentials from credential files.
+Re-encrypts sealed secrets with credentials from do-not-checkin-folder or user input.
 
 Usage:
     $0 re-encrypt [options]
 
 Options:
-    -k, --kubeconfig PATH    Path to kubeconfig file
-    -n, --namespace NAME     Namespace (default: $DEFAULT_WORKSPACE_NAMESPACE)
-    -h, --help               Show this help message
+    -k, --kubeconfig PATH         Path to kubeconfig file
+    -n, --namespace NAME          Namespace (default: $DEFAULT_WORKSPACE_NAMESPACE)
+    --pc-username USER            Prism Central username (optional, overrides file)
+    --pc-password PASS            Prism Central password (optional, overrides file)
+    --pc-endpoint ENDPOINT        Prism Central endpoint (optional, overrides file)
+    --pc-port PORT                Prism Central port (default: 9440)
+    --dockerhub-username USER     DockerHub username (optional, overrides file)
+    --dockerhub-password PASS     DockerHub password (optional, overrides file)
+    -h, --help                    Show this help message
 
-Credentials are read from (in order of preference):
-    1. $SOURCE_SECRETS_FILE (decodes base64 from Secret YAML)
-    2. $PC_CREDS_FILE (shell script with environment variables)
-    DockerHub: $DOCKERHUB_CREDS_FILE
+Credentials are read from:
+    $SOURCE_SECRETS_FILE (decodes base64 from Secret YAML)
+
+    Or provide credentials via command-line options (--pc-username, --pc-password, etc.)
 
 Examples:
     $0 re-encrypt
     $0 re-encrypt -n my-namespace
+    $0 re-encrypt --pc-username "user" --pc-password "pass" --pc-endpoint "pc.example.com"
 EOF
                 exit 0
                 ;;
@@ -616,11 +654,17 @@ EOF
     check_prerequisites
     set_kubeconfig
 
-    echo -e "${CYAN}Reading credentials from files...${NC}"
+    echo -e "${CYAN}Reading credentials...${NC}"
 
-    # Try reading from source secrets file first (most reliable)
-    if [ -f "$SOURCE_SECRETS_FILE" ]; then
-        echo -e "${CYAN}  Trying source secrets file: $SOURCE_SECRETS_FILE${NC}"
+    # Read from source secrets file if credentials not provided via command line
+    if [ -z "$PC_USERNAME" ] || [ -z "$PC_PASSWORD" ] || [ -z "$PC_ENDPOINT" ]; then
+        if [ ! -f "$SOURCE_SECRETS_FILE" ]; then
+            echo -e "${RED}✗ Source secrets file not found: $SOURCE_SECRETS_FILE${NC}"
+            echo -e "${YELLOW}  Please provide credentials via command-line options or ensure file exists${NC}"
+            exit 1
+        fi
+
+        echo -e "${CYAN}  Reading from source secrets file: $SOURCE_SECRETS_FILE${NC}"
         # Decode credentials from the source file
         # The file has secrets separated by ---, credentials field comes before name
         # Get the first credentials field (for dm-dev-pc-credentials)
@@ -628,69 +672,60 @@ EOF
         if [ -n "$PC_CREDS_B64" ]; then
             PC_CREDS_JSON_DECODED=$(echo "$PC_CREDS_B64" | base64 -d 2>/dev/null)
             if [ -n "$PC_CREDS_JSON_DECODED" ]; then
-                PC_USERNAME=$(echo "$PC_CREDS_JSON_DECODED" | jq -r '.[0].data.prismCentral.username' 2>/dev/null)
-                PC_PASSWORD=$(echo "$PC_CREDS_JSON_DECODED" | jq -r '.[0].data.prismCentral.password' 2>/dev/null)
+                if [ -z "$PC_USERNAME" ]; then
+                    PC_USERNAME=$(echo "$PC_CREDS_JSON_DECODED" | jq -r '.[0].data.prismCentral.username' 2>/dev/null)
+                fi
+                if [ -z "$PC_PASSWORD" ]; then
+                    PC_PASSWORD=$(echo "$PC_CREDS_JSON_DECODED" | jq -r '.[0].data.prismCentral.password' 2>/dev/null)
+                fi
                 # Extract endpoint from CSI key (first key field)
-                CSI_KEY_B64=$(grep "^  key:" "$SOURCE_SECRETS_FILE" | head -1 | awk '{print $2}')
-                if [ -n "$CSI_KEY_B64" ]; then
-                    CSI_KEY_DECODED=$(echo "$CSI_KEY_B64" | base64 -d 2>/dev/null)
-                    if [ -n "$CSI_KEY_DECODED" ]; then
-                        PC_ENDPOINT=$(echo "$CSI_KEY_DECODED" | cut -d: -f1)
-                        PC_PORT=$(echo "$CSI_KEY_DECODED" | cut -d: -f2)
+                if [ -z "$PC_ENDPOINT" ]; then
+                    CSI_KEY_B64=$(grep "^  key:" "$SOURCE_SECRETS_FILE" | head -1 | awk '{print $2}')
+                    if [ -n "$CSI_KEY_B64" ]; then
+                        CSI_KEY_DECODED=$(echo "$CSI_KEY_B64" | base64 -d 2>/dev/null)
+                        if [ -n "$CSI_KEY_DECODED" ]; then
+                            PC_ENDPOINT=$(echo "$CSI_KEY_DECODED" | cut -d: -f1)
+                            if [ -z "$PC_PORT" ] || [ "$PC_PORT" = "9440" ]; then
+                                PC_PORT=$(echo "$CSI_KEY_DECODED" | cut -d: -f2)
+                            fi
+                        fi
                     fi
                 fi
             fi
         fi
-        if [ -n "$PC_USERNAME" ] && [ -n "$PC_PASSWORD" ] && [ -n "$PC_ENDPOINT" ]; then
-            echo -e "${GREEN}✓ Read credentials from source secrets file${NC}"
-        fi
     fi
 
-    # Fallback to pc-creds.sh if source file didn't work
-    if [ -z "$PC_USERNAME" ] || [ -z "$PC_PASSWORD" ] || [ -z "$PC_ENDPOINT" ]; then
-        echo -e "${CYAN}  Trying PC credentials file: $PC_CREDS_FILE${NC}"
-        if [ ! -f "$PC_CREDS_FILE" ]; then
-            echo -e "${RED}✗ PC credentials file not found: $PC_CREDS_FILE${NC}"
-            exit 1
-        fi
-
-        # Source the PC credentials file to get variables (use bash to source properly)
-        eval "$(bash -c "source $PC_CREDS_FILE 2>/dev/null; echo 'PC_USERNAME='\${NUTANIX_USERNAME:-\${NUTANIX_USER}}; echo 'PC_PASSWORD='\$NUTANIX_PASSWORD; echo 'PC_ENDPOINT='\$NUTANIX_ENDPOINT; echo 'PC_PORT='\${NUTANIX_PORT:-9440}")"
-
-        if [ -z "$PC_USERNAME" ] || [ -z "$PC_PASSWORD" ] || [ -z "$PC_ENDPOINT" ]; then
-            echo -e "${YELLOW}  Trying alternative parsing method...${NC}"
-            # Alternative: parse the file directly
-            PC_USERNAME=$(grep "NUTANIX_USERNAME=" "$PC_CREDS_FILE" | cut -d'"' -f2 || grep "NUTANIX_USER=" "$PC_CREDS_FILE" | cut -d'"' -f2)
-            PC_PASSWORD=$(grep "NUTANIX_PASSWORD=" "$PC_CREDS_FILE" | cut -d'"' -f2)
-            PC_ENDPOINT=$(grep "NUTANIX_ENDPOINT=" "$PC_CREDS_FILE" | cut -d'"' -f2)
-            PC_PORT=$(grep "NUTANIX_PORT=" "$PC_CREDS_FILE" | cut -d'"' -f2 || echo "9440")
+    # Read DockerHub credentials from source file if not provided
+    if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_PASSWORD" ]; then
+        if [ -f "$SOURCE_SECRETS_FILE" ]; then
+            # DockerHub credentials are in dm-dev-image-registry-credentials secret
+            DOCKERHUB_USERNAME_B64=$(grep -A 5 "name: dm-dev-image-registry-credentials" "$SOURCE_SECRETS_FILE" | grep "^  username:" | awk '{print $2}')
+            DOCKERHUB_PASSWORD_B64=$(grep -A 5 "name: dm-dev-image-registry-credentials" "$SOURCE_SECRETS_FILE" | grep "^  password:" | awk '{print $2}')
+            if [ -n "$DOCKERHUB_USERNAME_B64" ] && [ -z "$DOCKERHUB_USERNAME" ]; then
+                DOCKERHUB_USERNAME=$(echo "$DOCKERHUB_USERNAME_B64" | base64 -d 2>/dev/null)
+            fi
+            if [ -n "$DOCKERHUB_PASSWORD_B64" ] && [ -z "$DOCKERHUB_PASSWORD" ]; then
+                DOCKERHUB_PASSWORD=$(echo "$DOCKERHUB_PASSWORD_B64" | base64 -d 2>/dev/null)
+            fi
         fi
     fi
 
     if [ -z "$PC_USERNAME" ] || [ -z "$PC_PASSWORD" ] || [ -z "$PC_ENDPOINT" ]; then
-        echo -e "${RED}✗ Failed to read PC credentials from both sources${NC}"
-        echo -e "${YELLOW}  Tried:${NC}"
-        echo -e "${YELLOW}    1. $SOURCE_SECRETS_FILE${NC}"
-        echo -e "${YELLOW}    2. $PC_CREDS_FILE${NC}"
+        echo -e "${RED}✗ Failed to read PC credentials${NC}"
+        echo -e "${YELLOW}  Please provide via --pc-username, --pc-password, --pc-endpoint options${NC}"
+        echo -e "${YELLOW}  Or ensure $SOURCE_SECRETS_FILE exists and contains valid credentials${NC}"
+        exit 1
+    fi
+
+    if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_PASSWORD" ]; then
+        echo -e "${RED}✗ Failed to read DockerHub credentials${NC}"
+        echo -e "${YELLOW}  Please provide via --dockerhub-username, --dockerhub-password options${NC}"
+        echo -e "${YELLOW}  Or ensure $SOURCE_SECRETS_FILE exists and contains valid credentials${NC}"
         exit 1
     fi
 
     echo -e "${GREEN}✓ PC credentials loaded${NC}"
-
-    # Read DockerHub credentials
-    if [ ! -f "$DOCKERHUB_CREDS_FILE" ]; then
-        echo -e "${RED}✗ DockerHub credentials file not found: $DOCKERHUB_CREDS_FILE${NC}"
-        exit 1
-    fi
-
-    # Extract DockerHub credentials (parse the file directly)
-    DOCKERHUB_USERNAME=$(grep "DOCKER_HUB_USERNAME=" "$DOCKERHUB_CREDS_FILE" | cut -d'=' -f2 | tr -d ' ' || echo "")
-    DOCKERHUB_PASSWORD=$(grep "DOCKER_HUB_PASSWORD=" "$DOCKERHUB_CREDS_FILE" | cut -d'"' -f2 || echo "")
-
-    if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_PASSWORD" ]; then
-        echo -e "${RED}✗ Failed to read DockerHub credentials from $DOCKERHUB_CREDS_FILE${NC}"
-        exit 1
-    fi
+    echo -e "${GREEN}✓ DockerHub credentials loaded${NC}"
 
     echo -e "${GREEN}✓ DockerHub credentials loaded${NC}"
     echo ""
