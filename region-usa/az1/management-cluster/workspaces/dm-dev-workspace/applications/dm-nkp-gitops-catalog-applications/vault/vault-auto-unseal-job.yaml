@@ -1,0 +1,108 @@
+# CronJob to automatically unseal Vault if it becomes sealed
+# This runs every 5 minutes to check and unseal Vault if needed
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-auto-unseal
+  namespace: vault
+spec:
+  schedule: "*/5 * * * *"  # Run every 5 minutes
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: vault-auto-unseal
+          containers:
+          - name: vault-unseal
+            image: hashicorp/vault:1.20.4
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Checking Vault status..."
+              
+              # Check if Vault is sealed
+              VAULT_STATUS=$(vault status 2>&1 || echo "Error")
+              if echo "$VAULT_STATUS" | grep -q "Sealed.*true"; then
+                echo "Vault is sealed. Attempting to unseal..."
+                
+                # Read unseal keys from secret
+                KEY1=$(cat /etc/vault-unseal-keys/unseal-key-1 | tr -d '\n\r ')
+                KEY2=$(cat /etc/vault-unseal-keys/unseal-key-2 | tr -d '\n\r ')
+                KEY3=$(cat /etc/vault-unseal-keys/unseal-key-3 | tr -d '\n\r ')
+                
+                # Unseal with 3 keys (threshold is 3)
+                echo "Unsealing with key 1..."
+                vault operator unseal "$KEY1" || echo "Key 1 applied"
+                
+                echo "Unsealing with key 2..."
+                vault operator unseal "$KEY2" || echo "Key 2 applied"
+                
+                echo "Unsealing with key 3..."
+                vault operator unseal "$KEY3" || echo "Key 3 applied"
+                
+                # Verify unseal status
+                sleep 2
+                FINAL_STATUS=$(vault status 2>&1 || echo "Error")
+                if echo "$FINAL_STATUS" | grep -q "Sealed.*false"; then
+                  echo "✓ Vault successfully unsealed"
+                else
+                  echo "⚠ Vault status check:"
+                  echo "$FINAL_STATUS"
+                  echo "⚠ Vault may still be sealed or initialization required."
+                fi
+              else
+                echo "✓ Vault is already unsealed. No action needed."
+              fi
+            env:
+            - name: VAULT_ADDR
+              value: "http://vault.vault.svc.cluster.local:8200"
+            - name: VAULT_SKIP_VERIFY
+              value: "true"
+            volumeMounts:
+            - name: vault-unseal-keys
+              mountPath: /etc/vault-unseal-keys
+              readOnly: true
+          volumes:
+          - name: vault-unseal-keys
+            secret:
+              secretName: vault-unseal-keys
+          restartPolicy: OnFailure
+---
+# ServiceAccount for the unseal job
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-auto-unseal
+  namespace: vault
+---
+# Role and RoleBinding to allow the job to read the unseal keys secret
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vault-auto-unseal
+  namespace: vault
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["vault-unseal-keys"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vault-auto-unseal
+  namespace: vault
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: vault-auto-unseal
+subjects:
+- kind: ServiceAccount
+  name: vault-auto-unseal
+  namespace: vault
+
