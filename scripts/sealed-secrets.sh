@@ -1719,7 +1719,7 @@ EOF
             echo -e "${RED}✗ Input file not found: $INPUT_FILE${NC}"
             exit 1
         fi
-        
+
         # Extract registry URL, username, and password from the file
         # Handle both stringData and data formats
         if grep -q "stringData:" "$INPUT_FILE"; then
@@ -1739,7 +1739,7 @@ EOF
             echo -e "${CYAN}Reading secret from file (will seal directly)...${NC}"
             INPUT_FILE_MODE="direct"
         fi
-        
+
         # Default registry if not detected
         if [[ -z "$REGISTRY_URL" ]] || [[ "$REGISTRY_URL" == "null" ]]; then
             REGISTRY_URL="index.docker.io"
@@ -1824,7 +1824,7 @@ EOF
             echo -e "${GREEN}✓ Extracted registry: $REGISTRY_URL${NC}"
             echo -e "${GREEN}✓ Extracted username: $USERNAME${NC}"
         fi
-        
+
         local AUTH=$(echo -n "$USERNAME:$PASSWORD" | base64 | tr -d '\n')
 
         # Create dockerconfigjson - use jq if available, otherwise construct manually
@@ -1872,7 +1872,7 @@ EOF
             rm -f "$TEMP_SECRET"
             exit 1
         }
-        
+
         rm -f "$TEMP_SECRET"
     fi
 
@@ -1903,6 +1903,210 @@ EOF
 }
 
 # ============================================================================
+# GENERATE-VAULT-UNSEAL-SEALED-SECRETS COMMAND
+# ============================================================================
+cmd_generate_vault_unseal_sealed_secrets() {
+    local INPUT_FILE="$DEFAULT_DO_NOT_CHECKIN_DIR/vault-unseal-keys.yaml"
+    local OUTPUT_FILE="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/applications/dm-nkp-gitops-catalog-applications/vault/vault-unseal-keys-sealed-secret.yaml"
+    local SEALED_SECRETS_NS="sealed-secrets-system"
+    local SEALED_SECRETS_CTRL="sealed-secrets-controller"
+    local KEY_STORAGE_DIR="$DEFAULT_DO_NOT_CHECKIN_DIR"
+    local CLUSTER_NAME=""
+    local PRIVATE_KEY_FILE=""
+    local PUBLIC_KEY_FILE=""
+
+    # Parse options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --from-file|--file|-f)
+                INPUT_FILE="$2"
+                shift 2
+                ;;
+            -o|--output)
+                OUTPUT_FILE="$2"
+                shift 2
+                ;;
+            -k|--kubeconfig)
+                KUBECONFIG="$2"
+                shift 2
+                ;;
+            --cluster-name)
+                CLUSTER_NAME="$2"
+                shift 2
+                ;;
+            -h|--help)
+                cat << EOF
+Generate Vault Unseal Keys Sealed Secret
+
+Generates a SealedSecret for Vault unseal keys with cluster-wide scope.
+Reads unseal keys from the vault-unseal-keys.yaml file in do-not-checkin-folder.
+
+Usage:
+    $0 generate-vault-unseal-sealed-secrets [options]
+
+Options:
+    --from-file, -f PATH      Read from vault unseal keys file (default: do-not-checkin-folder/vault-unseal-keys.yaml)
+    -o, --output PATH         Output file (default: region-usa/az1/.../vault/vault-unseal-keys-sealed-secret.yaml)
+    -k, --kubeconfig PATH     Path to kubeconfig file
+    --cluster-name NAME       Cluster name for key file naming (default: auto-detect)
+    -h, --help                Show this help message
+
+Examples:
+    # Use default file location
+    $0 generate-vault-unseal-sealed-secrets
+
+    # Specify custom input file
+    $0 generate-vault-unseal-sealed-secrets --from-file /path/to/vault-unseal-keys.yaml
+EOF
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Error: Unknown option: $1${NC}"
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ ! -f "$INPUT_FILE" ]]; then
+        echo -e "${RED}✗ Input file not found: $INPUT_FILE${NC}"
+        echo -e "${YELLOW}  Expected file with vault unseal keys in YAML format${NC}"
+        exit 1
+    fi
+
+    check_prerequisites
+    set_kubeconfig
+
+    if ! kubectl get namespace "$SEALED_SECRETS_NS" &> /dev/null; then
+        echo -e "${RED}✗ Namespace $SEALED_SECRETS_NS does not exist${NC}"
+        exit 1
+    fi
+
+    print_header "Generate Vault Unseal Keys Sealed Secret"
+
+    # Determine cluster name for key file naming
+    if [[ -z "$CLUSTER_NAME" ]]; then
+        CLUSTER_NAME=$(kubectl config view --minify -o jsonpath='{.contexts[0].context.cluster}' 2>/dev/null || echo "default")
+        CLUSTER_NAME=$(echo "$CLUSTER_NAME" | sed 's|https\?://||' | sed 's|:.*||' | sed 's|[^a-zA-Z0-9-]|-|g' | head -c 50)
+        if [[ -z "$CLUSTER_NAME" ]] || [[ "$CLUSTER_NAME" == "default" ]]; then
+            CLUSTER_NAME="cluster-$(date +%Y%m%d-%H%M%S)"
+        fi
+    fi
+
+    # Set key file paths - use keys from do-not-checkin-folder (always up to date)
+    # Default to dm-nkp-mgmt-1 if cluster name not specified
+    if [[ -z "$CLUSTER_NAME" ]] || [[ "$CLUSTER_NAME" == "default" ]]; then
+        CLUSTER_NAME="dm-nkp-mgmt-1"
+    fi
+    PRIVATE_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-key-backup-${CLUSTER_NAME}.yaml"
+    PUBLIC_KEY_FILE="$KEY_STORAGE_DIR/sealed-secrets-public-key-${CLUSTER_NAME}.pem"
+
+    # Ensure do-not-checkin-folder exists
+    mkdir -p "$KEY_STORAGE_DIR"
+
+    # Use public key from do-not-checkin-folder (always up to date with mgmt cluster)
+    if [ ! -f "$PUBLIC_KEY_FILE" ]; then
+        echo -e "${RED}✗ Public key file not found: $PUBLIC_KEY_FILE${NC}"
+        echo -e "${YELLOW}  Falling back to fetching from cluster...${NC}"
+        # Fetch the active private key from cluster
+        ACTIVE_KEY_NAME=$(kubectl get secret -n "$SEALED_SECRETS_NS" -l sealedsecrets.bitnami.com/sealed-secrets-key=active -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        if [[ -z "$ACTIVE_KEY_NAME" ]]; then
+            echo -e "${RED}✗ No active sealed-secrets key found in cluster${NC}"
+            exit 1
+        fi
+        echo -e "${YELLOW}  Fetching public key from cluster...${NC}"
+        kubeseal --fetch-cert \
+            --controller-name="$SEALED_SECRETS_CTRL" \
+            --controller-namespace="$SEALED_SECRETS_NS" \
+            > "$PUBLIC_KEY_FILE" 2>/dev/null || {
+            echo -e "${RED}✗ Failed to fetch public key${NC}"
+            exit 1
+        }
+    else
+        echo -e "${CYAN}Using public key from: $PUBLIC_KEY_FILE${NC}"
+        echo -e "${GREEN}✓ This ensures secrets are encrypted with the latest mgmt cluster keys${NC}"
+    fi
+    echo ""
+
+    # Extract unseal keys from the input file
+    echo -e "${CYAN}Reading unseal keys from: $INPUT_FILE${NC}"
+    
+    # Extract keys using yq if available, otherwise use grep/sed
+    if command -v yq &> /dev/null; then
+        KEY1=$(yq eval '.unseal_keys.key_1' "$INPUT_FILE" 2>/dev/null | tr -d '"' || echo "")
+        KEY2=$(yq eval '.unseal_keys.key_2' "$INPUT_FILE" 2>/dev/null | tr -d '"' || echo "")
+        KEY3=$(yq eval '.unseal_keys.key_3' "$INPUT_FILE" 2>/dev/null | tr -d '"' || echo "")
+    else
+        # Fallback: use grep and sed to extract
+        KEY1=$(grep -A 1 "key_1:" "$INPUT_FILE" | grep -v "key_1:" | sed 's/.*"\([^"]*\)".*/\1/' | head -1 || echo "")
+        KEY2=$(grep -A 1 "key_2:" "$INPUT_FILE" | grep -v "key_2:" | sed 's/.*"\([^"]*\)".*/\1/' | head -1 || echo "")
+        KEY3=$(grep -A 1 "key_3:" "$INPUT_FILE" | grep -v "key_3:" | sed 's/.*"\([^"]*\)".*/\1/' | head -1 || echo "")
+    fi
+
+    # Validate keys were extracted
+    if [[ -z "$KEY1" ]] || [[ -z "$KEY2" ]] || [[ -z "$KEY3" ]]; then
+        echo -e "${RED}✗ Failed to extract unseal keys from file${NC}"
+        echo -e "${YELLOW}  Expected format: unseal_keys.key_1, key_2, key_3${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}✓ Extracted 3 unseal keys${NC}"
+    echo ""
+
+    # Create Secret YAML with the unseal keys
+    echo -e "${CYAN}Creating secret with unseal keys...${NC}"
+    local TEMP_SECRET=$(mktemp)
+    cat > "$TEMP_SECRET" <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-unseal-keys
+  namespace: vault
+type: Opaque
+stringData:
+  unseal-key-1: "$KEY1"
+  unseal-key-2: "$KEY2"
+  unseal-key-3: "$KEY3"
+EOF
+
+    # Seal the secret with cluster-wide scope
+    echo -e "${CYAN}Sealing secret with cluster-wide scope...${NC}"
+    kubeseal \
+        --format=yaml \
+        --cert="$PUBLIC_KEY_FILE" \
+        --scope cluster-wide \
+        < "$TEMP_SECRET" > "$OUTPUT_FILE" || {
+        echo -e "${RED}✗ Failed to seal secret${NC}"
+        rm -f "$TEMP_SECRET"
+        exit 1
+    }
+
+    # Add header comment
+    {
+        echo "# SealedSecret for Vault unseal keys"
+        echo "# This stores the unseal keys needed to automatically unseal Vault"
+        echo "# NOTE: This requires all target clusters to have the same sealed-secrets controller private key."
+        echo "---"
+        cat "$OUTPUT_FILE"
+    } > "${OUTPUT_FILE}.tmp" && mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
+
+    # Ensure the template has the correct annotations using yq if available
+    if command -v yq &> /dev/null; then
+        yq eval '.metadata.annotations."sealedsecrets.bitnami.com/cluster-wide" = "true"' -i "$OUTPUT_FILE" 2>/dev/null || true
+        yq eval '.spec.template.metadata.annotations."sealedsecrets.bitnami.com/cluster-wide" = "true"' -i "$OUTPUT_FILE" 2>/dev/null || true
+    fi
+
+    rm -f "$TEMP_SECRET"
+
+    echo -e "${GREEN}✓ Sealed secret written to: $OUTPUT_FILE${NC}"
+    echo ""
+    echo -e "${CYAN}Key Information:${NC}"
+    echo -e "  Private key: $PRIVATE_KEY_FILE"
+    echo -e "  Public key: $PUBLIC_KEY_FILE"
+    echo -e "  Input file: $INPUT_FILE"
+    echo -e "  Keys sealed: 3 (unseal-key-1, unseal-key-2, unseal-key-3)"
+}
+
+# ============================================================================
 # MAIN
 # ============================================================================
 main() {
@@ -1919,6 +2123,7 @@ Commands:
     generate-cluster-sealed-secrets  Generate SealedSecrets for cluster credentials (PC, Konnector, CSI, Image Registry)
     generate-ndk-sealed-secrets    Generate SealedSecret for NDK image pull credentials
     generate-nai-sealed-secrets    Generate SealedSecret for NAI image pull credentials
+    generate-vault-unseal-sealed-secrets  Generate SealedSecret for Vault unseal keys
     decrypt                       Decrypt a sealed secret YAML file (requires keys)
     re-encrypt                    Re-encrypt secrets with new credentials
     status                        Check status of sealed secrets in cluster
@@ -1932,6 +2137,7 @@ Examples:
     $0 generate-cluster-sealed-secrets --pc-credentials.username "user" --pc-credentials.password "pass"
     $0 generate-ndk-sealed-secrets --username "user" --password "pass"
     $0 generate-nai-sealed-secrets --username "user" --password "pass"
+    $0 generate-vault-unseal-sealed-secrets
     $0 decrypt -f sealed-secret.yaml -o secret.yaml
     $0 re-encrypt
     $0 status
@@ -1957,6 +2163,9 @@ EOF
             ;;
         generate-nai-sealed-secrets)
             cmd_generate_nai_sealed_secrets "$@"
+            ;;
+        generate-vault-unseal-sealed-secrets)
+            cmd_generate_vault_unseal_sealed_secrets "$@"
             ;;
         generate-sealed-secrets)
             # Alias for generate-cluster-sealed-secrets (backward compatibility)
