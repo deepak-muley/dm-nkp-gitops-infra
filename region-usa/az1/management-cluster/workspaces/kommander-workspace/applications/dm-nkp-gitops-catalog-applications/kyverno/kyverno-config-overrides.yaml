@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kyverno-config-overrides
+  namespace: kommander
+data:
+  values.yaml: |
+    # Exclude vault namespace from Kyverno webhooks
+    # This prevents webhook timeouts during Vault installation
+    webhooks:
+      namespaceSelector:
+        matchExpressions:
+          - key: kubernetes.io/metadata.name
+            operator: NotIn
+            values:
+              - kube-system
+              - kyverno
+              - vault
+

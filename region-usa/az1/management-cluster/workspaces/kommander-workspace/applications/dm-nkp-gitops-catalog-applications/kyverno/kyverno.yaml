@@ -14,3 +14,5 @@ spec:
   clusterSelector:
     matchLabels:
       kommander.d2iq.io/host: "true"
+  configOverrides:
+    name: kyverno-config-overrides
