@@ -30,6 +30,7 @@ spec:
           - resources:
               namespaces:
                 - kube-system
+                - vault
       preconditions:
         all:
           # Only mutate pods with emptyDir volumes
