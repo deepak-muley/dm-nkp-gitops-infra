@@ -1633,7 +1633,8 @@ EOF
 cmd_generate_nai_sealed_secrets() {
     local USERNAME=""
     local PASSWORD=""
-    local REGISTRY_URL="${REGISTRY_URL:-registry.nutanix.com}"
+    local REGISTRY_URL="${REGISTRY_URL:-index.docker.io}"
+    local INPUT_FILE=""
     local OUTPUT_FILE="/Users/deepak.muley/go/src/github.com/deepak-muley/dm-nkp-gitops-infra/region-usa/az1/management-cluster/workspaces/dm-dev-workspace/applications/nkp-nutanix-products-catalog-applications/nutanix-ai/nai-image-pull-secret.yaml"
     local SEALED_SECRETS_NS="sealed-secrets-system"
     local SEALED_SECRETS_CTRL="sealed-secrets-controller"
@@ -1645,6 +1646,10 @@ cmd_generate_nai_sealed_secrets() {
     # Parse options
     while [[ $# -gt 0 ]]; do
         case $1 in
+            --from-file|--file|-f)
+                INPUT_FILE="$2"
+                shift 2
+                ;;
             --username)
                 USERNAME="$2"
                 shift 2
@@ -1679,19 +1684,25 @@ Usage:
     $0 generate-nai-sealed-secrets [options]
 
 Options:
-    --username USER           Registry username (plain text, required)
-    --password PASS           Registry password (plain text, required)
-    --registry-url URL        Registry URL (default: registry.nutanix.com)
+    --from-file, -f PATH      Read from existing plaintext secret file (recommended)
+                              If provided, registry URL, username, and password are auto-detected
+    --username USER           Registry username (required if --from-file not used)
+    --password PASS           Registry password (required if --from-file not used)
+    --registry-url URL        Registry URL (default: index.docker.io, auto-detected from file)
     -o, --output PATH         Output file (default: region-usa/az1/.../nutanix-ai/nai-image-pull-secret.yaml)
     -k, --kubeconfig PATH     Path to kubeconfig file
     --cluster-name NAME       Cluster name for key file naming (default: auto-detect)
     -h, --help                Show this help message
 
-Example:
+Examples:
+    # Recommended: Read from existing plaintext secret file
+    $0 generate-nai-sealed-secrets --from-file do-not-checkin-folder/nai-image-pull-secret.yaml
+
+    # Alternative: Provide credentials directly
     $0 generate-nai-sealed-secrets \\
         --username "myuser" \\
         --password "mypass" \\
-        --registry-url "registry.nutanix.com"
+        --registry-url "index.docker.io"
 EOF
                 exit 0
                 ;;
@@ -1702,8 +1713,42 @@ EOF
         esac
     done
 
-    if [[ -z "$USERNAME" ]] || [[ -z "$PASSWORD" ]]; then
-        echo -e "${RED}✗ Username and password are required${NC}"
+    # If input file is provided, extract credentials from it
+    if [[ -n "$INPUT_FILE" ]]; then
+        if [[ ! -f "$INPUT_FILE" ]]; then
+            echo -e "${RED}✗ Input file not found: $INPUT_FILE${NC}"
+            exit 1
+        fi
+        
+        # Extract registry URL, username, and password from the file
+        # Handle both stringData and data formats
+        if grep -q "stringData:" "$INPUT_FILE"; then
+            # Extract from stringData (plaintext)
+            if command -v yq &> /dev/null; then
+                REGISTRY_URL=$(yq eval '.stringData.".dockerconfigjson" | fromjson | .auths | keys[0]' "$INPUT_FILE" 2>/dev/null || echo "index.docker.io")
+                USERNAME=$(yq eval '.stringData.".dockerconfigjson" | fromjson | .auths | to_entries[0].value.username' "$INPUT_FILE" 2>/dev/null || echo "")
+                PASSWORD=$(yq eval '.stringData.".dockerconfigjson" | fromjson | .auths | to_entries[0].value.password' "$INPUT_FILE" 2>/dev/null || echo "")
+            else
+                # Fallback: use grep and sed to extract
+                REGISTRY_URL=$(grep -A 10 'stringData:' "$INPUT_FILE" | grep -o '"[^"]*":' | head -1 | tr -d '":' || echo "index.docker.io")
+                USERNAME=$(grep -A 10 'stringData:' "$INPUT_FILE" | grep '"username"' | sed 's/.*"username": *"\([^"]*\)".*/\1/' || echo "")
+                PASSWORD=$(grep -A 10 'stringData:' "$INPUT_FILE" | grep '"password"' | sed 's/.*"password": *"\([^"]*\)".*/\1/' || echo "")
+            fi
+        else
+            # If it's already a data field (base64), we can't extract easily, so just seal it directly
+            echo -e "${CYAN}Reading secret from file (will seal directly)...${NC}"
+            INPUT_FILE_MODE="direct"
+        fi
+        
+        # Default registry if not detected
+        if [[ -z "$REGISTRY_URL" ]] || [[ "$REGISTRY_URL" == "null" ]]; then
+            REGISTRY_URL="index.docker.io"
+        fi
+    fi
+
+    # Validate required parameters
+    if [[ -z "$INPUT_FILE" ]] && ([[ -z "$USERNAME" ]] || [[ -z "$PASSWORD" ]]); then
+        echo -e "${RED}✗ Either --from-file or both --username and --password are required${NC}"
         exit 1
     fi
 
@@ -1761,14 +1806,31 @@ EOF
     fi
     echo ""
 
-    # Create dockerconfigjson
-    echo -e "${CYAN}Creating dockerconfigjson secret...${NC}"
-    local AUTH=$(echo -n "$USERNAME:$PASSWORD" | base64 | tr -d '\n')
+    # Handle direct file sealing (if file has data field instead of stringData)
+    if [[ -n "$INPUT_FILE" ]] && grep -q "^data:" "$INPUT_FILE" && ! grep -q "stringData:" "$INPUT_FILE"; then
+        echo -e "${CYAN}Sealing secret directly from file (contains base64 data)...${NC}"
+        kubeseal \
+            --format=yaml \
+            --cert="$PUBLIC_KEY_FILE" \
+            --scope cluster-wide \
+            < "$INPUT_FILE" > "$OUTPUT_FILE" || {
+            echo -e "${RED}✗ Failed to seal secret${NC}"
+            exit 1
+        }
+    else
+        # Create dockerconfigjson from extracted or provided credentials
+        echo -e "${CYAN}Creating dockerconfigjson secret...${NC}"
+        if [[ -n "$INPUT_FILE" ]]; then
+            echo -e "${GREEN}✓ Extracted registry: $REGISTRY_URL${NC}"
+            echo -e "${GREEN}✓ Extracted username: $USERNAME${NC}"
+        fi
+        
+        local AUTH=$(echo -n "$USERNAME:$PASSWORD" | base64 | tr -d '\n')
 
-    # Create dockerconfigjson - use jq if available, otherwise construct manually
-    local DOCKERCONFIGJSON=""
-    if command -v jq &> /dev/null; then
-        DOCKERCONFIGJSON=$(cat <<EOF | jq -c .
+        # Create dockerconfigjson - use jq if available, otherwise construct manually
+        local DOCKERCONFIGJSON=""
+        if command -v jq &> /dev/null; then
+            DOCKERCONFIGJSON=$(cat <<EOF | jq -c .
 {
   "auths": {
     "$REGISTRY_URL": {
@@ -1780,15 +1842,15 @@ EOF
 }
 EOF
 )
-    else
-        # Manual JSON construction (no jq dependency)
-        DOCKERCONFIGJSON="{\"auths\":{\"$REGISTRY_URL\":{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\",\"auth\":\"$AUTH\"}}}"
-    fi
+        else
+            # Manual JSON construction (no jq dependency)
+            DOCKERCONFIGJSON="{\"auths\":{\"$REGISTRY_URL\":{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\",\"auth\":\"$AUTH\"}}}"
+        fi
 
-    # Create Secret YAML
-    local TEMP_SECRET=$(mktemp)
-    local DOCKERCONFIGJSON_B64=$(echo -n "$DOCKERCONFIGJSON" | base64 | tr -d '\n')
-    cat > "$TEMP_SECRET" <<EOF
+        # Create Secret YAML
+        local TEMP_SECRET=$(mktemp)
+        local DOCKERCONFIGJSON_B64=$(echo -n "$DOCKERCONFIGJSON" | base64 | tr -d '\n')
+        cat > "$TEMP_SECRET" <<EOF
 apiVersion: v1
 kind: Secret
 metadata:
@@ -1799,17 +1861,20 @@ data:
   .dockerconfigjson: $DOCKERCONFIGJSON_B64
 EOF
 
-    # Seal the secret with cluster-wide scope
-    echo -e "${CYAN}Sealing secret with cluster-wide scope...${NC}"
-    kubeseal \
-        --format=yaml \
-        --cert="$PUBLIC_KEY_FILE" \
-        --scope cluster-wide \
-        < "$TEMP_SECRET" > "$OUTPUT_FILE" || {
-        echo -e "${RED}✗ Failed to seal secret${NC}"
+        # Seal the secret with cluster-wide scope
+        echo -e "${CYAN}Sealing secret with cluster-wide scope...${NC}"
+        kubeseal \
+            --format=yaml \
+            --cert="$PUBLIC_KEY_FILE" \
+            --scope cluster-wide \
+            < "$TEMP_SECRET" > "$OUTPUT_FILE" || {
+            echo -e "${RED}✗ Failed to seal secret${NC}"
+            rm -f "$TEMP_SECRET"
+            exit 1
+        }
+        
         rm -f "$TEMP_SECRET"
-        exit 1
-    }
+    fi
 
     # Add header comment
     {
