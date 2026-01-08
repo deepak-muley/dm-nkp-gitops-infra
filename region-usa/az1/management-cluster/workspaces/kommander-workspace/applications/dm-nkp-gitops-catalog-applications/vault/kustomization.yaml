@@ -4,5 +4,6 @@ resources:
   - vault-namespace.yaml
   - vault.yaml
   - vault-unseal-keys-sealed-secret.yaml
-  - vault-auto-unseal-job.yaml
+  # Temporarily disabled due to Kyverno webhook issue
+  # - vault-auto-unseal-job.yaml
 
