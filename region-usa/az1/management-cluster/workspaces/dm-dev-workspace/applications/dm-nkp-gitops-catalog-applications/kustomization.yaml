@@ -4,7 +4,6 @@ resources:
   # Applications from dm-nkp-gitops-app-catalog
   # - podinfo  # Commented out - directory not present
   - kyverno
-  - vault
   - kubescape-operator
   - kro
 

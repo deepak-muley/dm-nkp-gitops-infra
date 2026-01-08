@@ -5,3 +5,4 @@ resources:
   - kyverno
   - kubescape-operator
   - kro
+  - vault

@@ -2,7 +2,7 @@ apiVersion: apps.kommander.d2iq.io/v1alpha3
 kind: AppDeployment
 metadata:
   name: vault
-  namespace: dm-dev-workspace
+  namespace: kommander
   annotations:
     kustomize.toolkit.fluxcd.io/ssa: merge
     kustomize.toolkit.fluxcd.io/prune: disabled
@@ -10,9 +10,8 @@ spec:
   appRef:
     kind: App
     name: vault-0.31.0
+  # Use host cluster selector to target management cluster
   clusterSelector:
-    matchExpressions:
-      - key: kommander.d2iq.io/cluster-name
-        operator: In
-        values:
-          - dm-nkp-workload-1
+    matchLabels:
+      kommander.d2iq.io/host: "true"
+
