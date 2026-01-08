@@ -65,9 +65,10 @@ spec:
         #             issuer: "https://token.actions.githubusercontent.com"
 
         # Placeholder - replace with your configuration
+        # NOTE: mutateDigest must be false when validationFailureAction is Audit
         - imageReferences:
             - "docker.io/library/nginx:*"
-          mutateDigest: true
+          mutateDigest: false
           verifyDigest: true
           required: false  # Set to true when ready to enforce
 ---
