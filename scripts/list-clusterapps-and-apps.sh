@@ -13,10 +13,12 @@
 #   --name PATTERN       Filter by name (partial match)
 #   --namespace NS       Filter by namespace (for App resources)
 #   --type TYPE          Filter by type (custom, internal, nkp-catalog, nkp-core-platform)
+#   --type-pattern PATTERN Filter by type pattern (partial match, e.g., "internal", "core-platform")
 #   --licensing PATTERN  Filter by licensing (partial match, e.g., "pro", "ultimate")
 #   --dependencies PATTERN Filter by dependencies (partial match, e.g., "cert-manager")
 #   --check-deployments  Show AppDeployment status and cluster deployment info
 #   --generate-block-diagram  Generate block diagram of ClusterApp dependencies
+#   --list-types         List all available app types and exit
 #   --no-color           Disable colored output
 #   --summary            Show only summary statistics
 #   -h, --help           Show this help message
@@ -45,10 +47,12 @@ FILTER_SCOPE=""
 FILTER_NAME=""
 FILTER_NAMESPACE=""
 FILTER_TYPE=""
+FILTER_TYPE_PATTERN=""
 FILTER_LICENSING=""
 FILTER_DEPENDENCIES=""
 CHECK_DEPLOYMENTS=false
 GENERATE_BLOCK_DIAGRAM=false
+LIST_TYPES=false
 NO_COLOR=false
 SUMMARY_ONLY=false
 
@@ -75,6 +79,10 @@ while [[ $# -gt 0 ]]; do
       FILTER_TYPE="$2"
       shift 2
       ;;
+    --type-pattern)
+      FILTER_TYPE_PATTERN="$2"
+      shift 2
+      ;;
     --licensing)
       FILTER_LICENSING="$2"
       shift 2
@@ -89,6 +97,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --generate-block-diagram)
       GENERATE_BLOCK_DIAGRAM=true
+      shift
+      ;;
+    --list-types)
+      LIST_TYPES=true
       shift
       ;;
     --no-color)
@@ -112,10 +124,12 @@ Options:
   --name PATTERN       Filter by name (partial match, case-insensitive)
   --namespace NS        Filter by namespace (for App resources)
   --type TYPE          Filter by type (custom, internal, nkp-catalog, nkp-core-platform)
+  --type-pattern PATTERN Filter by type pattern (partial match, e.g., "internal", "core-platform")
   --licensing PATTERN  Filter by licensing (partial match, e.g., "pro", "ultimate")
   --dependencies PATTERN Filter by dependencies (partial match, e.g., "cert-manager")
   --check-deployments  Show AppDeployment status and cluster deployment info
   --generate-block-diagram  Generate block diagram of ClusterApp dependencies
+  --list-types         List all available app types and exit
   --no-color           Disable colored output
   --summary            Show only summary statistics
   -h, --help           Show this help message
@@ -136,6 +150,10 @@ Examples:
   # Filter by namespace
   $0 --namespace kommander-default-workspace
 
+  # Filter by type pattern
+  $0 --type-pattern internal
+  $0 --type-pattern core-platform
+
   # Filter by licensing
   $0 --licensing ultimate
 
@@ -144,6 +162,7 @@ Examples:
 
   # Combine filters
   $0 --kind App --scope workspace --name kserve --licensing pro
+  $0 --type-pattern internal --kind ClusterApp
 
   # Check deployment status
   $0 --check-deployments --name cert-manager
@@ -151,6 +170,9 @@ Examples:
 
   # Generate block diagram
   $0 --generate-block-diagram
+
+  # List all available app types
+  $0 --list-types
 EOF
       exit 0
       ;;
@@ -381,6 +403,11 @@ process_by_type() {
     jq_filter="$jq_filter | select(.metadata.namespace == \"$FILTER_NAMESPACE\")"
   fi
 
+  # Apply type pattern filter (partial match, similar to licensing)
+  if [ -n "$FILTER_TYPE_PATTERN" ]; then
+    jq_filter="$jq_filter | select((.metadata.annotations.\"apps.kommander.d2iq.io/type\" // .metadata.labels.\"apps.kommander.d2iq.io/type\" // \"\") | ascii_downcase | contains(\"$FILTER_TYPE_PATTERN\" | ascii_downcase))"
+  fi
+
   # Apply licensing filter
   if [ -n "$FILTER_LICENSING" ]; then
     jq_filter="$jq_filter | select((.metadata.annotations.\"apps.kommander.d2iq.io/licensing\" // \"\") | ascii_downcase | contains(\"$FILTER_LICENSING\" | ascii_downcase))"
@@ -491,13 +518,14 @@ fi
 print_section "ClusterApp and App Resources"
 
 # Show active filters
-if [ -n "$FILTER_KIND" ] || [ -n "$FILTER_SCOPE" ] || [ -n "$FILTER_NAME" ] || [ -n "$FILTER_NAMESPACE" ] || [ -n "$FILTER_TYPE" ] || [ -n "$FILTER_LICENSING" ] || [ -n "$FILTER_DEPENDENCIES" ]; then
+if [ -n "$FILTER_KIND" ] || [ -n "$FILTER_SCOPE" ] || [ -n "$FILTER_NAME" ] || [ -n "$FILTER_NAMESPACE" ] || [ -n "$FILTER_TYPE" ] || [ -n "$FILTER_TYPE_PATTERN" ] || [ -n "$FILTER_LICENSING" ] || [ -n "$FILTER_DEPENDENCIES" ]; then
   print_color "${YELLOW}" "Active Filters:"
   [ -n "$FILTER_KIND" ] && print_color "${YELLOW}" "  Kind: $FILTER_KIND"
   [ -n "$FILTER_SCOPE" ] && print_color "${YELLOW}" "  Scope: $FILTER_SCOPE"
   [ -n "$FILTER_NAME" ] && print_color "${YELLOW}" "  Name: $FILTER_NAME"
   [ -n "$FILTER_NAMESPACE" ] && print_color "${YELLOW}" "  Namespace: $FILTER_NAMESPACE"
   [ -n "$FILTER_TYPE" ] && print_color "${YELLOW}" "  Type: $FILTER_TYPE"
+  [ -n "$FILTER_TYPE_PATTERN" ] && print_color "${YELLOW}" "  Type Pattern: $FILTER_TYPE_PATTERN"
   [ -n "$FILTER_LICENSING" ] && print_color "${YELLOW}" "  Licensing: $FILTER_LICENSING"
   [ -n "$FILTER_DEPENDENCIES" ] && print_color "${YELLOW}" "  Dependencies: $FILTER_DEPENDENCIES"
   echo ""
@@ -508,6 +536,75 @@ TYPES=$(kubectl get clusterapps,apps -A -o json 2>/dev/null | jq -r '.items[] | 
 
 if [ -z "$TYPES" ]; then
   print_color "${YELLOW}" "No ClusterApp or App resources found in the cluster"
+  exit 0
+fi
+
+# If --list-types is specified, show types and exit
+if [ "$LIST_TYPES" = true ]; then
+  print_section "Available App Types"
+
+  # Count resources per type
+  print_color "${BOLD}${CYAN}" "App Types Found:"
+  echo ""
+
+  for type in $TYPES; do
+    # Count ClusterApps of this type
+    clusterapp_count=$(kubectl get clusterapps -A -o json 2>/dev/null | \
+      jq -r --arg TYPE "$type" '.items[] |
+      select((.metadata.annotations."apps.kommander.d2iq.io/type" // .metadata.labels."apps.kommander.d2iq.io/type" // "N/A") == $TYPE) |
+      .kind' 2>/dev/null | wc -l | tr -d ' ')
+
+    # Count Apps of this type
+    app_count=$(kubectl get apps -A -o json 2>/dev/null | \
+      jq -r --arg TYPE "$type" '.items[] |
+      select((.metadata.annotations."apps.kommander.d2iq.io/type" // .metadata.labels."apps.kommander.d2iq.io/type" // "N/A") == $TYPE) |
+      .kind' 2>/dev/null | wc -l | tr -d ' ')
+
+    total_count=$((clusterapp_count + app_count))
+
+    # Determine plural forms
+    clusterapp_plural=""
+    if [ "$clusterapp_count" -ne 1 ]; then
+      clusterapp_plural="s"
+    fi
+    app_plural=""
+    if [ "$app_count" -ne 1 ]; then
+      app_plural="s"
+    fi
+
+    # Color code by type
+    type_color=""
+    case "$type" in
+      "nkp-core-platform")
+        type_color="${CYAN}"
+        ;;
+      "nkp-catalog")
+        type_color="${GREEN}"
+        ;;
+      "custom")
+        type_color="${YELLOW}"
+        ;;
+      "internal")
+        type_color="${MAGENTA}"
+        ;;
+      *)
+        type_color="${NC}"
+        ;;
+    esac
+
+    if [ "$NO_COLOR" = false ]; then
+      printf "  ${type_color}%-25s${NC} (${BLUE}%d${NC} ClusterApp%s, ${GREEN}%d${NC} App%s, ${BOLD}%d${NC} total)\n" \
+        "$type" "$clusterapp_count" "$clusterapp_plural" "$app_count" "$app_plural" "$total_count"
+    else
+      printf "  %-25s (%d ClusterApp%s, %d App%s, %d total)\n" \
+        "$type" "$clusterapp_count" "$clusterapp_plural" "$app_count" "$app_plural" "$total_count"
+    fi
+  done
+
+  echo ""
+  print_color "${BOLD}" "Total Types: ${GREEN}$(echo "$TYPES" | wc -l | tr -d ' ')${NC}"
+  echo ""
+  print_color "${CYAN}" "Use --type TYPE or --type-pattern PATTERN to filter by type"
   exit 0
 fi
 
