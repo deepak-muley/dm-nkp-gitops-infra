@@ -36,28 +36,8 @@
 - op: remove
   path: /spec/topology/workers/machineDeployments/0/metadata/annotations/cluster.x-k8s.io~1cluster-api-autoscaler-node-group-min-size
 
-# Secret reference patches - Update to use common dev secrets
-# CCM credentials
-- op: replace
-  path: /spec/topology/variables/0/value/addons/ccm/credentials/secretRef/name
-  value: dm-dev-pc-credentials
-
-# CSI credentials
-- op: replace
-  path: /spec/topology/variables/0/value/addons/csi/providers/nutanix/credentials/secretRef/name
-  value: dm-dev-pc-credentials-for-csi
-
-# Konnector Agent credentials
-- op: replace
-  path: /spec/topology/variables/0/value/addons/konnectorAgent/credentials/secretRef/name
-  value: dm-dev-pc-credentials-for-konnector-agent
-
-# Image registry credentials
-- op: replace
-  path: /spec/topology/variables/0/value/imageRegistries/0/credentials/secretRef/name
-  value: dm-dev-image-registry-credentials
-
-# Prism Central endpoint credentials
-- op: replace
-  path: /spec/topology/variables/0/value/nutanix/prismCentralEndpoint/credentials/secretRef/name
-  value: dm-dev-pc-credentials
+# NOTE: Secret references are NOT patched here.
+# Each cluster in bases/ has its own per-cluster secret names:
+#   - dm-nkp-workload-1-pc-credentials, dm-nkp-workload-1-pc-credentials-for-csi, etc.
+#   - dm-nkp-workload-2-pc-credentials, dm-nkp-workload-2-pc-credentials-for-csi, etc.
+# The corresponding SealedSecrets are in sealed-secrets/ folder.
