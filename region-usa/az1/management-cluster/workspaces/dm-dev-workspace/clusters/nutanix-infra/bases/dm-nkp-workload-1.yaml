@@ -2,7 +2,7 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   annotations:
-    caren.nutanix.com/cluster-uuid: 019afb99-7556-7c79-b02b-f66b91c8f57a
+    caren.nutanix.com/cluster-uuid: 019c2589-097a-741d-8edd-83023505d200
   labels:
     cluster.x-k8s.io/provider: nutanix
     konvoy.d2iq.io/cluster-name: dm-nkp-workload-1
@@ -21,10 +21,10 @@ spec:
     host: ""
     port: 0
   topology:
-    class: nkp-nutanix-v2.17.0-rc.1
+    class: nkp-nutanix-v2.17.0
     controlPlane:
       metadata: {}
-      replicas: 1
+      replicas: 3
     variables:
       - name: clusterConfig
         value:
@@ -61,6 +61,7 @@ spec:
                         storageContainer: default-container-92034737804854
                         storageType: NutanixVolumes
                       reclaimPolicy: Delete
+                      volumeBindingMode: WaitForFirstConsumer
                   strategy: HelmAddon
               snapshotController:
                 strategy: HelmAddon
@@ -73,12 +74,15 @@ spec:
             serviceLoadBalancer:
               configuration:
                 addressRanges:
-                  - end: 10.23.130.75
+                  - end: 10.23.130.72
                     start: 10.23.130.71
               provider: MetalLB
           controlPlane:
             autoRenewCertificates:
               daysBeforeExpiry: 180
+            nodeRegistration:
+              ignorePreflightErrors:
+                - SystemVerification
             nutanix:
               machineDetails:
                 bootType: uefi
@@ -137,6 +141,9 @@ spec:
             overrides:
               - name: workerConfig
                 value:
+                  nodeRegistration:
+                    ignorePreflightErrors:
+                      - SystemVerification
                   nutanix:
                     machineDetails:
                       bootType: uefi
@@ -151,5 +158,5 @@ spec:
                         - name: vlan173
                           type: name
                       systemDiskSize: 80Gi
-                      vcpuSockets: 8
+                      vcpuSockets: 4
                       vcpusPerSocket: 1

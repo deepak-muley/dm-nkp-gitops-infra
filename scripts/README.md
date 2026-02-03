@@ -11,6 +11,7 @@ Utility scripts for managing the NKP GitOps infrastructure.
 | `bootstrap-sealed-secrets-key-crs.sh` | Deploy sealed-secrets key via ClusterResourceSet | `./scripts/bootstrap-sealed-secrets-key-crs.sh` |
 | `check-cluster-health.sh` | Check health of all NKP clusters | `./scripts/check-cluster-health.sh` |
 | `check-violations.sh` | Check Gatekeeper policy violations | `./scripts/check-violations.sh mgmt` |
+| `kyverno-control.sh` | Enable/disable Kyverno policies and webhooks | `./scripts/kyverno-control.sh --enable\|--disable\|--status [mgmt]` |
 | `get-kubescape-cves.sh` | Get CVEs from kubescape scans with severity filtering | `./scripts/get-kubescape-cves.sh [severity] [cluster]` |
 | `list-clusterapps-and-apps.sh` | List all ClusterApp and App CRs grouped by type | `./scripts/list-clusterapps-and-apps.sh [--generate-block-diagram]` |
 | `migrate-to-new-structure.sh` | Migrate repo structure safely | `./scripts/migrate-to-new-structure.sh` |
@@ -388,6 +389,153 @@ Columns: KS=Kustomizations, HR=HelmReleases, GR=GitRepos, HCP=HelmChartProxies, 
 | `mgmt` | `/Users/deepak.muley/ws/nkp/dm-nkp-mgmt-1.conf` |
 | `workload1` | `/Users/deepak.muley/ws/nkp/dm-nkp-workload-1.kubeconfig` |
 | `workload2` | `/Users/deepak.muley/ws/nkp/dm-nkp-workload-2.kubeconfig` |
+
+---
+
+## kyverno-control.sh
+
+Enable or disable Kyverno policies and webhooks on the management cluster. This script provides a safe way to temporarily disable Kyverno for troubleshooting or maintenance without uninstalling it.
+
+### Why Is This Needed?
+
+Sometimes you need to temporarily disable Kyverno policies and webhooks:
+- Troubleshooting policy violations blocking deployments
+- Testing without policy enforcement
+- Maintenance windows
+- Debugging webhook timeouts
+
+This script safely disables Kyverno by:
+1. Suspending the Flux Kustomization that deploys policies
+2. Disabling validation and mutation webhooks (sets `failurePolicy: Ignore`)
+
+### Usage
+
+```bash
+# Disable Kyverno (uses default mgmt kubeconfig)
+./scripts/kyverno-control.sh --disable
+
+# Enable Kyverno
+./scripts/kyverno-control.sh --enable
+
+# Check current status
+./scripts/kyverno-control.sh --status
+
+# Disable on management cluster (explicit)
+./scripts/kyverno-control.sh --disable mgmt
+
+# Enable on management cluster
+./scripts/kyverno-control.sh --enable mgmt
+
+# Dry run (show what would be done)
+./scripts/kyverno-control.sh --disable --dry-run
+
+# Use custom kubeconfig
+./scripts/kyverno-control.sh --enable -k /path/to/kubeconfig
+
+# Help
+./scripts/kyverno-control.sh --help
+```
+
+### Command Options
+
+| Option | Description |
+|--------|-------------|
+| `--enable, -e` | Enable Kyverno (resume policies, enable webhooks) |
+| `--disable, -d` | Disable Kyverno (suspend policies, disable webhooks) |
+| `--status, -s` | Check current Kyverno status |
+| `--kubeconfig, -k PATH` | Path to kubeconfig file |
+| `--dry-run` | Show what would be done without making changes |
+| `--help, -h` | Show help message |
+
+### What It Does
+
+#### When Disabling (`--disable`):
+
+1. **Suspends Flux Kustomization**: Sets `kustomize.toolkit.fluxcd.io/suspend=true` on `clusterops-kyverno-policies`
+   - This stops Flux from applying new or updated policies
+   - Existing policies remain but won't be updated
+
+2. **Disables ValidatingWebhookConfigurations**: Sets `failurePolicy: Ignore` on all Kyverno validating webhooks
+   - Webhooks still exist but won't block requests
+   - Validation policies won't be enforced
+
+3. **Disables MutatingWebhookConfigurations**: Sets `failurePolicy: Ignore` on all Kyverno mutating webhooks
+   - Webhooks still exist but won't mutate resources
+   - Mutation policies won't be applied
+
+#### When Enabling (`--enable`):
+
+1. **Resumes Flux Kustomization**: Removes suspend annotation from `clusterops-kyverno-policies`
+   - Flux will resume applying policies
+
+2. **Enables ValidatingWebhookConfigurations**: Sets `failurePolicy: Fail` on all Kyverno validating webhooks
+   - Validation policies will be enforced again
+
+3. **Enables MutatingWebhookConfigurations**: Sets `failurePolicy: Fail` on all Kyverno mutating webhooks
+   - Mutation policies will be applied again
+
+### Status Check
+
+The `--status` command shows:
+
+- **Flux Kustomization**: Whether it's suspended or active, and Ready status
+- **AppDeployment**: Whether the Kyverno AppDeployment is suspended
+- **ValidatingWebhookConfigurations**: List of webhooks and their failurePolicy
+- **MutatingWebhookConfigurations**: List of webhooks and their failurePolicy
+- **Kyverno Pods**: Status of Kyverno pods in the `kyverno` namespace
+
+### Sample Output
+
+```
+════════════════════════════════════════════════════════════════
+  Disabling Kyverno
+════════════════════════════════════════════════════════════════
+
+ℹ Suspending Flux Kustomization: clusterops-kyverno-policies
+✓ Suspended Flux Kustomization: clusterops-kyverno-policies
+
+ℹ Disabling Kyverno ValidatingWebhookConfigurations
+ℹ Disabling ValidatingWebhookConfiguration: kyverno-validating-webhook-cfg
+ℹ Disabling Kyverno MutatingWebhookConfigurations
+ℹ Disabling MutatingWebhookConfiguration: kyverno-mutating-webhook-cfg
+
+✓ Kyverno has been disabled
+```
+
+### Requirements
+
+- `kubectl` - Must be installed and configured
+- `jq` - JSON processor (optional, but recommended for accurate webhook detection)
+- Access to the management cluster via kubeconfig
+
+### Kubeconfig Shortcuts
+
+The script knows your NKP kubeconfig locations:
+
+| Shortcut | Kubeconfig Path |
+|----------|-----------------|
+| `mgmt` | `/Users/deepak.muley/ws/nkp/dm-nkp-mgmt-1.conf` |
+| `workload1` | `/Users/deepak.muley/ws/nkp/dm-nkp-workload-1.kubeconfig` |
+| `workload2` | `/Users/deepak.muley/ws/nkp/dm-nkp-workload-2.kubeconfig` |
+
+### Important Notes
+
+- **Webhooks are not deleted**: The script sets `failurePolicy: Ignore` instead of deleting webhooks. This is safer and allows easy re-enabling.
+- **Policies remain**: Existing policies stay in the cluster but won't be enforced when webhooks are disabled.
+- **Flux Kustomization**: Suspending the Kustomization prevents new policies from being applied, but doesn't remove existing ones.
+- **Re-enabling**: When you re-enable, policies will be enforced again immediately.
+
+### Use Cases
+
+- **Troubleshooting**: Temporarily disable policies to test if they're blocking deployments
+- **Maintenance**: Disable policies during cluster maintenance
+- **Testing**: Test deployments without policy enforcement
+- **Debugging**: Isolate webhook issues from policy issues
+
+### See Also
+
+- `check-violations.sh` - Check policy violations (Gatekeeper & Kyverno)
+- `docs/TROUBLESHOOT-KYVERNO-POLICIES-KUSTOMIZATION.md` - Troubleshooting guide
 
 ---
 
