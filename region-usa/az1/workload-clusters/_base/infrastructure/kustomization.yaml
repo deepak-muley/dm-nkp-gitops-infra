@@ -5,4 +5,4 @@ kind: Kustomization
 resources:
   - sealed-secrets-controller/
   - gatekeeper/
-  - kyverno/
+  # - kyverno/  # Disabled - causing webhook issues blocking other deployments
