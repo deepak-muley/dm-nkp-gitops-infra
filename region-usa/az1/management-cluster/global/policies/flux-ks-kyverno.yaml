@@ -4,6 +4,8 @@
 # Note: Kyverno must be installed on the cluster before these policies can be applied.
 # The Kyverno application is deployed via workspace applications.
 #
+# SUSPENDED: Kyverno is disabled due to webhook issues blocking Thanos/prometheus-adapter
+#
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -11,6 +13,7 @@ metadata:
   name: clusterops-kyverno-policies
   namespace: dm-nkp-gitops-infra
 spec:
+  suspend: true  # Suspended - Kyverno is disabled
   interval: 5m
   # Path to shared Kyverno policies
   path: ./region-usa/az1/_common/policies/kyverno
