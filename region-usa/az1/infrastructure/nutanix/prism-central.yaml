@@ -67,24 +67,29 @@ data:
   # Reference: spec.topology.variables[].value.addons.serviceLoadBalancer.configuration.addressRanges
   metallb-ranges: |
     dm-nkp-workload-1:
-      start: 10.23.130.71
-      end: 10.23.130.75
-      count: 5
+      ranges:
+        - start: 10.23.130.71, end: 10.23.130.72
+        - start: 10.23.130.77, end: 10.23.130.78
+      count: 4
     dm-nkp-workload-2:
-      start: 10.23.130.76
-      end: 10.23.130.80
-      count: 5
+      ranges:
+        - start: 10.23.130.73, end: 10.23.130.76
+      count: 4
 
   # Summary of IP usage on vlan173 subnet
   ip-usage-summary: |
     Network: vlan173 (10.23.130.0/24 assumed)
 
-    Control Plane VIPs:
-      - 10.23.130.62 (dm-nkp-workload-1)
-      - 10.23.130.63 (dm-nkp-workload-2)
+    Management Cluster (dm-nkp-mgmt-1):
+      - Control Plane VIP: 10.23.130.61
+      - MetalLB: 10.23.130.66-67
 
-    MetalLB Ranges:
-      - 10.23.130.71-75 (dm-nkp-workload-1, 5 IPs)
-      - 10.23.130.76-80 (dm-nkp-workload-2, 5 IPs)
+    Workload Cluster 1 (dm-nkp-workload-1):
+      - Control Plane VIP: 10.23.130.62
+      - MetalLB: 10.23.130.71-72, 77-78 (4 IPs)
 
-    Reserved/Available: TBD
+    Workload Cluster 2 (dm-nkp-workload-2):
+      - Control Plane VIP: 10.23.130.63
+      - MetalLB: 10.23.130.73-76 (4 IPs)
+
+    Reserved/Available: 10.23.130.64-65, 68-70, 79+
