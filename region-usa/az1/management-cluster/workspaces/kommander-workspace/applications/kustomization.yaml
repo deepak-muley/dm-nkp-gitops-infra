@@ -5,3 +5,5 @@ resources:
   - dm-nkp-gitops-catalog-applications
   # Platform applications for management cluster
   - platform-applications
+  # Nutanix products catalog applications (NDK, NAI)
+  - nkp-nutanix-products-catalog-applications
