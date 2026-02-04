@@ -26,14 +26,14 @@
   value: nkp-nutanix-v2.17.0
 
 # Cluster Autoscaler configuration
-# Set min=1 and max=3 for worker node autoscaling
+# Set min=1 and max=5 for worker node autoscaling
 # NOTE: When using autoscaler, do NOT set a fixed replicas value - autoscaler manages it
 - op: replace
   path: /spec/topology/workers/machineDeployments/0/metadata/annotations/cluster.x-k8s.io~1cluster-api-autoscaler-node-group-min-size
   value: "1"
 - op: replace
   path: /spec/topology/workers/machineDeployments/0/metadata/annotations/cluster.x-k8s.io~1cluster-api-autoscaler-node-group-max-size
-  value: "3"
+  value: "5"
 
 # NOTE: Secret references are NOT patched here.
 # Each cluster in bases/ has its own per-cluster secret names:
