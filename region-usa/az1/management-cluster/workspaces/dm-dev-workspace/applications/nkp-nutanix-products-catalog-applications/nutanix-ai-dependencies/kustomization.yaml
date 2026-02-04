@@ -7,4 +7,5 @@ kind: Kustomization
 resources:
   - kserve.yaml
   - envoy-gateway.yaml
+  - envoy-gatewayclass.yaml  # GatewayClass required for NAI - not created by Helm chart
   - opentelemetry-operator.yaml

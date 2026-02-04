@@ -1,0 +1,35 @@
+# Envoy GatewayClass - Required for NAI Gateway to work
+# The Envoy Gateway Helm chart does NOT create this automatically
+# This must be created after envoy-gateway is installed
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-gatewayclass-crs-resources
+  namespace: dm-dev-workspace
+data:
+  gatewayclass.yaml: |
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: GatewayClass
+    metadata:
+      name: eg
+    spec:
+      controllerName: gateway.envoyproxy.io/gatewayclass-controller
+---
+# ClusterResourceSet to deploy GatewayClass to workload clusters
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  name: envoy-gatewayclass-crs
+  namespace: dm-dev-workspace
+spec:
+  clusterSelector:
+    matchExpressions:
+      - key: kommander.d2iq.io/cluster-name
+        operator: In
+        values:
+          - dm-nkp-workload-1
+          - dm-nkp-workload-2
+  resources:
+    - kind: ConfigMap
+      name: envoy-gatewayclass-crs-resources
+  strategy: Reconcile

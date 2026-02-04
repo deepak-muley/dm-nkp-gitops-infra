@@ -74,7 +74,7 @@ spec:
             serviceLoadBalancer:
               configuration:
                 addressRanges:
-                  - end: 10.23.130.72
+                  - end: 10.23.130.75
                     start: 10.23.130.71
               provider: MetalLB
           controlPlane:

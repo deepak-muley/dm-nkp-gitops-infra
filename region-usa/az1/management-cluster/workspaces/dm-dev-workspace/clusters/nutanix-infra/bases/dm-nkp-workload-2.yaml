@@ -74,8 +74,8 @@ spec:
             serviceLoadBalancer:
               configuration:
                 addressRanges:
-                  - end: 10.23.130.74
-                    start: 10.23.130.73
+                  - end: 10.23.130.80
+                    start: 10.23.130.76
               provider: MetalLB
           controlPlane:
             autoRenewCertificates:
