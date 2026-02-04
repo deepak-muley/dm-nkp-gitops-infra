@@ -10,6 +10,6 @@ resources:
   # - cosi-driver-nutanix
   # NKP Insights (depends on prometheus and cloudnative-pg)
   - nkp-insights
-  # # Rook-Ceph for block and object storage
-  # - rook-ceph
-  # - rook-ceph-cluster
+  # Rook-Ceph for block and object storage (required for NKP Insights on workload clusters)
+  - rook-ceph
+  - rook-ceph-cluster
