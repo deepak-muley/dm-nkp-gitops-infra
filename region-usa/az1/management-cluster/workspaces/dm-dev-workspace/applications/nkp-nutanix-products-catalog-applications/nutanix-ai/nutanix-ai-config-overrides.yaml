@@ -5,5 +5,6 @@ metadata:
   namespace: dm-dev-workspace
 data:
   values.yaml: |
+    # Use nai-operators-secret (deployed via CRS to workload clusters) for image pull
     imageCredentials:
-      name: nutanix-ai-image-registry-credentials
+      name: nai-operators-secret
