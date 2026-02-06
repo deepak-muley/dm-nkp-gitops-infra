@@ -8,3 +8,6 @@ resources:
   - harbor
   # NKP Insights (depends on prometheus and cloudnative-pg)
   - nkp-insights
+  # Logging stack (Fluent Bit log collector + Grafana Logging dashboard)
+  - fluent-bit
+  - grafana-logging
