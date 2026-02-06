@@ -13,6 +13,7 @@ resources:
   # Rook-Ceph for block and object storage (required for NKP Insights on workload clusters)
   - rook-ceph
   - rook-ceph-cluster
-  # Logging stack (Fluent Bit log collector + Grafana Logging dashboard)
+  # Logging stack (Fluent Bit log collector + Loki log aggregation + Grafana Logging dashboard)
   - fluent-bit
+  - grafana-loki
   - grafana-logging
